@@ -1,0 +1,134 @@
+## differential transcript expression
+
+```{r}
+# libraries
+library(DESeq2)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+```
+
+```{r}
+# read in raw counts matrix
+counts_raw <- read.table("./count_matrix/FLNC_count_matrix.txt", header=TRUE, sep="") %>%
+  arrange(associated_gene)
+
+counts_raw
+```
+
+```{r}
+# filter counts to keep genes with at least 2 samples with counts >= 10
+
+filtered_counts <- counts_raw[rowSums(counts_raw[-1] >= 10)>= 2,]
+
+length(filtered_counts$associated_gene)
+
+filtered_counts
+```
+
+```{r}
+# create deseq2 object
+
+# counts matrix
+counts_matrix <- as.matrix(filtered_counts[, -c(1,2)])
+row.names(counts_matrix) <- filtered_counts$isoform
+
+# col data
+col_data <- tibble(
+  sample_name = colnames(filtered_counts[-c(1,2)])) %>%
+  separate(sample_name,c("condition","replicate"),sep="_",remove=FALSE) %>%
+  mutate(condition=as.factor(condition))
+
+design <- formula(~ condition)
+
+dds <- DESeqDataSetFromMatrix(
+  countData=counts_matrix,
+  colData=col_data,
+  design=design
+)
+```
+
+```{r}
+# run deseq2
+dds <- DESeq(dds)
+res <- results(dds) %>%
+  as.data.frame()
+```
+
+```{r}
+# join associated_gene name to results based on isoform
+
+deis <- res %>%
+  mutate(isoform = rownames(.)) %>%
+  arrange(padj) %>%
+  left_join(., filtered_counts, by = "isoform") %>%
+  select("isoform", "associated_gene", everything())
+
+deis
+```
+
+```{r}
+# volcano plot of significant isoforms with 1.5 log2fc red lines
+
+top10_genes <- deis %>%
+  arrange(padj) %>%
+  head(4)
+
+volcano_plot <- deis %>%
+  mutate(log10_adj_pvalue = -log10(padj)) %>%
+  ggplot(aes(x = log2FoldChange, y = log10_adj_pvalue)) +
+  geom_point() +
+  geom_vline(xintercept = c(-1.5, 1.5), linetype = "dashed", color = "red") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
+  geom_text_repel(data = top10_genes,
+                  aes(label = isoform, x = log2FoldChange, y = -log10(padj)),
+                  size = 3,
+                  max.overlaps = 10,
+                  box.padding = 0.5,
+                  segment.color = "grey50") +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10 padj", title = "Volcano Plot with Significant Isoforms Labelled")
+
+volcano_plot
+```
+```{r}
+deis %>% filter(padj < 0.05)
+```
+
+```{r}
+# ENSG00000291064
+plotCounts(dds, "PB.132592.33", intgroup = "condition", main = "Gene: ENSG00000291064, Isoform: PB.132592.33")
+
+# RPA1
+plotCounts(dds, "PB.115662.60", intgroup = "condition", main = "Gene: RPA1, Isoform: PB.115662.60")
+
+# SEC14L1
+plotCounts(dds, "PB.119524.428", intgroup = "condition", main = "Gene: SEC14L1, Isoform: PB.119524.428")
+
+# CTSB
+plotCounts(dds, "PB.65977.380", intgroup = "condition", main = "Gene: CTSB, Isoform: PB.65977.380")
+
+```
+
+ENSG00000291064
+https://www.genecards.org/cgi-bin/carddisp.pl?gene=ENSG00000291064&keywords=ENSG00000291064
+lncRNA gene
+ENSG00000291064 (Novel Transcript) is an RNA Gene, and is affiliated with the lncRNA class
+
+RPA1 (Replication Protein A1)
+https://www.genecards.org/cgi-bin/carddisp.pl?gene=RPA1&keywords=RPA1
+protein-coding
+This gene encodes the largest subunit of the heterotrimeric Replication Protein A (RPA) complex, which binds to single-stranded DNA (ssDNA), forming a nucleoprotein complex that plays an important role in DNA metabolism, being involved in DNA replication, repair, recombination, telomere maintenance, and co-ordinating the cellular response to DNA damage through activation of the ataxia telangiectasia and Rad3-related protein (ATR) kinase. The nucleoprotein complex protects the single-stranded DNA from nucleases, prevents formation of secondary structures that would interfere with repair, and co-ordinates the recruitment and departure of different genome maintenance factors. This subunit contains four oligonucleotide/oligosaccharide-binding (OB) domains, though the majority of ssDNA binding occurs in two of these domains. The heterotrimeric complex has two different modes of ssDNA binding, a low-affinity and high-affinity mode, determined by which ssDNA binding domains are utilized. The different binding modes differ in the length of DNA bound and in the proteins with which it interacts, thereby playing a role in regulating different genomic maintenance pathways. [provided by RefSeq, Sep 2017]
+
+SEC14L1 (SEC14 Like Lipid Binding 1)
+https://www.genecards.org/cgi-bin/carddisp.pl?gene=SEC14L1
+protein-coding
+The protein encoded by this gene belongs to the SEC14 cytosolic factor family. It has similarity to yeast SEC14 and to Japanese flying squid RALBP which suggests a possible role of the gene product in an intracellular transport system. Multiple alternatively spliced transcript variants have been found for this gene; some variants represent read-through transcripts that include exons from the upstream gene C17orf86. [provided by RefSeq, Feb 2011]
+
+CTSB (Cathepsin B)
+https://www.genecards.org/cgi-bin/carddisp.pl?gene=CTSB&keywords=CTSB
+protein-coding
+This gene encodes a member of the C1 family of peptidases. Alternative splicing of this gene results in multiple transcript variants. At least one of these variants encodes a preproprotein that is proteolytically processed to generate multiple protein products. These products include the cathepsin B light and heavy chains, which can dimerize to form the double chain form of the enzyme. This enzyme is a lysosomal cysteine protease with both endopeptidase and exopeptidase activity that may play a role in protein turnover. It is also known as amyloid precursor protein secretase and is involved in the proteolytic processing of amyloid precursor protein (APP). Incomplete proteolytic processing of APP has been suggested to be a causative factor in Alzheimers disease, the most common cause of dementia. Overexpression of the encoded protein has been associated with esophageal adenocarcinoma and other tumors. Both Cathepsin B and Cathepsin L are involved in the cleavage of the spike protein from the severe acute respiratory syndrome coronavirus 2 (SARS-CoV-2) upon its entry to the human host cell. Multiple pseudogenes of this gene have been identified. [provided by RefSeq, Sep 2020]
+
+

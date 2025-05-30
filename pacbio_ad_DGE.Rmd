@@ -11,7 +11,7 @@ library(tidyr)
 ```
 
 ```{r}
-# read in tpm normalized counts matrix
+# read in raw counts matrix
 counts_raw <- read.table("./count_matrix/FLNC_count_matrix.txt", header=TRUE, sep="") %>%
   arrange(associated_gene)
 
