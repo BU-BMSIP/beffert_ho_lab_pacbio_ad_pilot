@@ -24,30 +24,19 @@ counts_by_gene <- counts_raw %>%
   group_by(associated_gene) %>%
   summarise(across(-c(1, 1), sum))
 
-#length(counts_by_gene$associated_gene)
+length(counts_by_gene$associated_gene)
 
 head(counts_by_gene)
 ```
-```{r}
-# distribution of counts per gene per sample
-library(ggridges)
-
-pivot_longer(counts_by_gene,-c(associated_gene),names_to="Sample",values_to="Count") %>%
-  mutate(`log10(Count+1)`=log10(Count+1)) %>%
-  ggplot(aes(y=Sample,x=`log10(Count+1)`,fill=Sample)) +
-  geom_density_ridges(bandwidth=0.132) +
-  labs(title="log10(Count+1) Distributions")
-```
 
 ```{r}
-# filter counts to keep genes with at least 4 samples with counts >= 10
-# do two nonzero instead of 4
+# filter counts to keep genes with at least 2 samples with counts >= 10
 
-filtered_counts <- counts_by_gene[rowSums(counts_by_gene[-1] >= 10)>= 4,]
+filtered_counts <- counts_by_gene[rowSums(counts_by_gene[-1] >= 10)>= 2,]
 
 length(filtered_counts$associated_gene)
 
-#head(filtered_counts)
+head(filtered_counts)
 ```
 
 ```{r}
@@ -82,16 +71,13 @@ res <- results(dds) %>%
 ```
 
 ```{r}
-# filter for significant genes (pvalue < 0.05)
-# why are my padj values all the same???
+# filter for significant genes (padj < 0.05)
 
 degs <- res %>%
   mutate(gene = rownames(.)) %>%
-  arrange(pvalue)
+  arrange(padj)
 
 degs
-
-plotCounts(dds, "UBXN11", intgroup = "condition")
 ```
 
 
@@ -101,30 +87,34 @@ plotCounts(dds, "UBXN11", intgroup = "condition")
 # volcano plot of significant degs with 1.5 log2fc red lines
 
 top10_genes <- degs %>%
-  arrange(pvalue) %>%
-  slice_head(n = 15)
+  arrange(padj) %>%
+  head(1)
 
 volcano_plot <- degs %>%
-  mutate(log10_adj_pvalue = -log10(pvalue)) %>%
+  mutate(log10_adj_pvalue = -log10(padj)) %>%
   ggplot(aes(x = log2FoldChange, y = log10_adj_pvalue)) +
   geom_point() +
   geom_vline(xintercept = c(-1.5, 1.5), linetype = "dashed", color = "red") +
   geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
   geom_text_repel(data = top10_genes,
-                  aes(label = gene, x = log2FoldChange, y = -log10(pvalue)),
+                  aes(label = gene, x = log2FoldChange, y = -log10(padj)),
                   size = 3,
                   max.overlaps = 10,
                   box.padding = 0.5,
                   segment.color = "grey50") +
   theme_minimal() +
-  labs(x = "Log2 Fold Change", y = "-Log10 p-value", title = "Volcano Plot with Top 15 Significant Genes Labelled")
+  labs(x = "Log2 Fold Change", y = "-Log10 padj", title = "Volcano Plot with Significant Genes Labelled")
 
 volcano_plot
 ```
+
 ```{r}
 degs[degs$gene %in% c("RELN", "LRP8"), ]
 ```
 ```{r}
-head(degs$gene, n = 20)
+plotCounts(dds, "UBXN11", intgroup = "condition")
+```
+```{r}
+plotCounts(dds, "CA1", intgroup = "condition")
 ```
 
