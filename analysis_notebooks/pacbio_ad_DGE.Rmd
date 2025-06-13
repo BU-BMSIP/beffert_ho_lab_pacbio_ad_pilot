@@ -1,0 +1,120 @@
+## differential gene expression
+## method referenced: https://www.biorxiv.org/content/10.1101/2023.09.20.558220v1.full
+
+```{r}
+# libraries
+library(DESeq2)
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(tidyr)
+```
+
+```{r}
+# read in raw counts matrix
+counts_raw <- read.table("./count_matrix/FLNC_count_matrix.txt", header=TRUE, sep="") %>%
+  arrange(associated_gene)
+
+counts_raw
+```
+
+```{r}
+# sum all isoform counts by gene
+counts_by_gene <- counts_raw %>%
+  group_by(associated_gene) %>%
+  summarise(across(-c(1, 1), sum))
+
+length(counts_by_gene$associated_gene)
+
+head(counts_by_gene)
+```
+
+```{r}
+# filter counts to keep genes with at least 2 samples with counts >= 10
+
+filtered_counts <- counts_by_gene[rowSums(counts_by_gene[-1] >= 10)>= 2,]
+
+length(filtered_counts$associated_gene)
+
+head(filtered_counts)
+```
+
+```{r}
+# create deseq2 object
+
+# counts matrix
+counts_matrix <- as.matrix(filtered_counts[-1])
+row.names(counts_matrix) <- filtered_counts$associated_gene
+
+# col data
+col_data <- tibble(
+  sample_name = colnames(filtered_counts[-1])) %>%
+  separate(sample_name,c("condition","replicate"),sep="_",remove=FALSE) %>%
+  mutate(condition=as.factor(condition))
+
+design <- formula(~ condition)
+
+dds <- DESeqDataSetFromMatrix(
+  countData=counts_matrix,
+  colData=col_data,
+  design=design
+)
+
+col_data
+```
+
+```{r}
+# run deseq2
+dds <- DESeq(dds)
+res <- results(dds) %>%
+  as.data.frame()
+```
+
+```{r}
+# filter for significant genes (padj < 0.05)
+
+degs <- res %>%
+  mutate(gene = rownames(.)) %>%
+  arrange(padj)
+
+degs
+```
+
+
+
+
+```{r}
+# volcano plot of significant degs with 1.5 log2fc red lines
+
+top10_genes <- degs %>%
+  arrange(padj) %>%
+  head(1)
+
+volcano_plot <- degs %>%
+  mutate(log10_adj_pvalue = -log10(padj)) %>%
+  ggplot(aes(x = log2FoldChange, y = log10_adj_pvalue)) +
+  geom_point() +
+  geom_vline(xintercept = c(-1.5, 1.5), linetype = "dashed", color = "red") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
+  geom_text_repel(data = top10_genes,
+                  aes(label = gene, x = log2FoldChange, y = -log10(padj)),
+                  size = 3,
+                  max.overlaps = 10,
+                  box.padding = 0.5,
+                  segment.color = "grey50") +
+  theme_minimal() +
+  labs(x = "Log2 Fold Change", y = "-Log10 padj", title = "Volcano Plot with Significant Genes Labelled")
+
+volcano_plot
+```
+
+```{r}
+degs[degs$gene %in% c("RELN", "LRP8"), ]
+```
+```{r}
+plotCounts(dds, "UBXN11", intgroup = "condition")
+```
+```{r}
+plotCounts(dds, "CA1", intgroup = "condition")
+```
+
