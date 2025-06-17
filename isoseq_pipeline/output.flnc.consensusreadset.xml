@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<pbds:ConsensusReadSet CreatedAt="2025-06-13T21:16:16.528Z" MetaType="PacBio.DataSet.ConsensusReadSet" Name="output.flnc.bam" Tags="hidden" TimeStampedName="output.flnc.bam-250613_211616529" UniqueId="cfcdded0-5b55-43a7-b149-bc893aa49d4c" Version="3.0.1" xmlns="http://pacificbiosciences.com/PacBioDatasets.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pacificbiosciences.com/PacBioDatasets.xsd" xmlns:pbbase="http://pacificbiosciences.com/PacBioBaseDataModel.xsd" xmlns:pbds="http://pacificbiosciences.com/PacBioDatasets.xsd">
+	<pbbase:ExternalResources>
+		<pbbase:ExternalResource CreatedAt="2025-06-13T21:16:16.529Z" MetaType="PacBio.ConsensusReadFile.ConsensusReadBamFile" ResourceId="/restricted/projectnb/ubah/rbozadjian/beffert_ho_lab_pacbio_ad_pilot/isoseq_pipeline/output.flnc.bam" TimeStampedName="pacbio_consensusreadfile_consensusreadbamfile-250613_211616529" UniqueId="44eb7716-63b9-4f7c-86bd-1f5c52fbc5b1" Version="3.0.1">
+			<pbbase:FileIndices>
+				<pbbase:FileIndex CreatedAt="2025-06-13T21:16:16.529Z" MetaType="PacBio.Index.PacBioIndex" ResourceId="/restricted/projectnb/ubah/rbozadjian/beffert_ho_lab_pacbio_ad_pilot/isoseq_pipeline/output.flnc.bam.pbi" TimeStampedName="pacbio_index_pacbioindex-250613_211616529" UniqueId="3edff97f-85e6-4b29-a6cd-835f2e70b6e1" Version="3.0.1" />
+			</pbbase:FileIndices>
+		</pbbase:ExternalResource>
+	</pbbase:ExternalResources>
+	<pbds:DataSetMetadata>
+		<pbds:TotalLength>5092</pbds:TotalLength>
+		<pbds:NumRecords>5</pbds:NumRecords>
+	</pbds:DataSetMetadata>
+</pbds:ConsensusReadSet>
