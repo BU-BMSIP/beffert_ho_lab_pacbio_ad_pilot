@@ -1,3 +1,3 @@
-name,path
-C01,/projectnb/ubah/skistler/Pilot_C01/hifi_reads/*.bam
-D01,/projectnb/ubah/skistler/Pilot_D01/hifi_reads/*.bam
+name,bam_path,bpi_path
+C01,/projectnb/ubah/skistler/Pilot_C01/hifi_reads/*.bam, /projectnb/ubah/skistler/Pilot_C01/hifi_reads/*.bpi
+D01,/projectnb/ubah/skistler/Pilot_D01/hifi_reads/*.bam, /projectnb/ubah/skistler/Pilot_D01/hifi_reads/*.bpi

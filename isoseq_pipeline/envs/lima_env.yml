@@ -1,0 +1,7 @@
+name: lima_env
+channels:
+- conda-forge
+- bioconda 
+
+dependencies:
+- lima=2.13.0

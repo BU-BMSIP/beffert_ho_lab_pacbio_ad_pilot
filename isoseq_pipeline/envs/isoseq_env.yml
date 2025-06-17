@@ -1,0 +1,7 @@
+name: isoseq_env
+channels:
+- conda-forge
+- bioconda 
+
+dependencies:
+- isoseq=4.3.0
