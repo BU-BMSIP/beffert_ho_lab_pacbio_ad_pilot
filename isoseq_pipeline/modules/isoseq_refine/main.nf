@@ -6,13 +6,15 @@ process ISOSEQ_REFINE{
     publishDir params.outdir
 
     input:
-    tuple path(bam), path(adapter)
+    path(bam_fl)
+    path(cdna_adapters)
 
     output:
-    path("${bam.baseName}.flnc.bam")
+    path("${bam_fl.baseName}.flnc.bam"), emit: flnc
+    path("${bam_fl.baseName}.flnc.transcriptset.xml")
 
     shell:
     """
-    isoseq refine $bam $adapter ${bam.baseName}.flnc.bam
+    isoseq refine $bam_fl $cdna_adapters ${bam_fl.baseName}.flnc.bam -j $task.cpus
     """
 }

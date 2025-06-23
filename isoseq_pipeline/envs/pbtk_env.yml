@@ -1,0 +1,7 @@
+name: pbtk_env
+channels:
+- conda-forge
+- bioconda 
+
+dependencies:
+- pbtk=3.5.0

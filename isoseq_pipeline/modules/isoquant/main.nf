@@ -6,7 +6,7 @@ process ISOQUANT{
     publishDir params.outdir
 
     input:
-    path(bam)
+    path(fasta)
     path(gtf)
     path(genome)
 
@@ -15,8 +15,7 @@ process ISOQUANT{
 
     script:
     """
-    mkdir results
-    isoquant.py -d pacbio_ccs --bam ${bam.join(" ")} --genedb $gtf -r $genome --count_exons --output params.outdir
+    isoquant.py -d pacbio_ccs --fastq ${fasta.join(" ")} --genedb $gtf -r $genome --count_exons --output params.outdir/isoquant --threads $task.cpus
     """
 
 }

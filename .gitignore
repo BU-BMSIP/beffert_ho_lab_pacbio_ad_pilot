@@ -5,6 +5,7 @@ samples/
 .nextflow/
 work/
 .conda/
+remultiplexed_hifi_reads/
 
 
 
