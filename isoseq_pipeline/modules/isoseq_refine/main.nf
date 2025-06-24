@@ -2,19 +2,19 @@
 
 process ISOSEQ_REFINE{
     conda "envs/isoseq_env.yml"
-    label "process_medium"
-    publishDir params.outdir
+    label "process_high"
+    publishDir "${params.outdir}/flnc_reads"
 
     input:
-    path(bam_fl)
+    tuple val(name), path(bam_fl)
     path(cdna_adapters)
 
     output:
-    path("${bam_fl.baseName}.flnc.bam"), emit: flnc
-    path("${bam_fl.baseName}.flnc.transcriptset.xml")
+    tuple val(name), path("${name}.flnc.bam"), emit: flnc
+    path("${name}.flnc.transcriptset.xml")
 
     shell:
     """
-    isoseq refine $bam_fl $cdna_adapters ${bam_fl.baseName}.flnc.bam -j $task.cpus
+    isoseq refine $bam_fl $cdna_adapters ${name}.flnc.bam -j 10
     """
 }

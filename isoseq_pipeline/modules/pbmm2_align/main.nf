@@ -2,8 +2,8 @@
 
 process PBMM2_ALIGN {
     conda "envs/pbmm2_env.yml"
-    label "process_medium"
-    publishDir params.outdir
+    label "process_high"
+    publishDir "${params.outdir}/aligned_reads"
 
     input:
     path(bam_clustered)
@@ -14,6 +14,6 @@ process PBMM2_ALIGN {
 
     shell:
     """
-    pbmm2 align -j $task.cpus -J $task.cpus --preset ISOSEQ --sort $bam_clustered $indexed_genome ${bam_clustered.baseName}.aligned.bam 
+    pbmm2 align -j 8 -J 10 --preset ISOSEQ --sort $bam_clustered $indexed_genome ${bam_clustered.baseName}.aligned.bam 
     """
 }

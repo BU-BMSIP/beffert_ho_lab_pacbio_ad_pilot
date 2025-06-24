@@ -3,7 +3,7 @@
 process PBMM2_INDEX {
     conda "envs/pbmm2_env.yml"
     label "process_high"
-    publishDir params.outdir
+    publishDir "${params.outdir}/aligned_reads"
 
     input:
     path(genome)

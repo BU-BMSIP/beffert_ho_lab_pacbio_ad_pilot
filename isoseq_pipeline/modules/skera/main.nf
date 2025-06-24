@@ -2,19 +2,19 @@
 
 process SKERA {
     conda "envs/skera_env.yml"
-    label "process_medium"
-    publishDir params.outdir
+    label "process_high"
+    publishDir "${params.outdir}/segmented_reads"
 
     input:
-    path(bam_demux)
+    tuple val(name), path(bam_demux)
     path(kinnex_segmentation_adapters)
 
     output:
-    path("${bam_demux.baseName}.segmented.bam"), emit: segmented
-    path("*")
+    tuple val(name), path("${name}.segmented.bam"), emit: segmented
+    path("${name}.segmented*")
 
     shell:
     """
-    skera split $bam_demux $kinnex_segmentation_adapters ${bam_demux.baseName}.segmented.bam
+    skera split $bam_demux $kinnex_segmentation_adapters ${name}.segmented.bam -j 10
     """
 }

@@ -15,7 +15,11 @@ workflow{
 
     Channel.fromPath(params.samplesheet)
         | splitCsv( header: true )
-        | map{ row -> file(row.bam_path) }
+        | map { row ->
+            def base = file(row.bam_path).baseName
+            def matcher = (base =~ /^(.*?)(?:\.hifi_reads.*)?$/)
+            def shortName = matcher.matches() ? matcher[0][1] : base
+            tuple(shortName, file(row.bam_path))}
         | flatten()
         | set{ bam_ch }
 
@@ -32,23 +36,31 @@ workflow{
     ISOSEQ_REFINE(LIMA_CDNA_DEMULTIPLEX.out.fl, params.cdna_adapters)
 
     // merge SMRT cells
+    // Channel.fromPath(ISOSEQ_REFINE.out.flnc)
+    //     | map { it.toAbsolutePath().toString() }
+    //     | collectFile(name: 'flnc.fofn', text: true)
+    //     | view()
+   //     |set { merged_ch }
 
     // cluster
-    //ISOSEQ_CLUSTER2(?)
+    //ISOSEQ_CLUSTER2(merged_ch)
 
-    // convert bam to fasta
+    // convert bam to fasta --> I don't think I need this
     //PBTK(ISOSEQ_CLUSTER2.out.clustered_bam)
-
-    // isoquant: annotated gene, isoform, exon and intron quantification
-    //ISOQUANT(PBTK.out)
 
     // map to reference genome
     //PBMM2_INDEX(params.genome)
     //PBMM2_ALIGN(ISOSEQ_CLUSTER2.out.clustered_bam, PBMM2_INDEX.out.indexed_genome)
 
-    // collapse into unique isoforms
+     // isoform discovery: annotated gene, isoform, exon and intron quantification
+    //ISOQUANT(PBMM2_ALIGN.out.aligned, params.gtf, params.genome)
+
+    // collapse into unique isoforms --> can skip this and use Isoquant?
     //ISOSEQ_COLLAPSE(PBMM2_ALIGN.out.aligned, ISOSEQ_CLUSTER2.out.clustered_bam)
 
-    // classify isoforms
+    // counts matrix generation
+    // TALON()
 
+    // more analyses
+    // isoformanalyzer, deseq2, drimseq, dexseq
 }

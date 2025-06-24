@@ -2,11 +2,11 @@
 
 process ISOQUANT{
     conda "envs/isoquant_env.yml"
-    label "process_medium"
-    publishDir params.outdir
+    label "process_high"
+    publishDir "${params.outdir}/isoquant"
 
     input:
-    path(fasta)
+    path(bam_aligned)
     path(gtf)
     path(genome)
 
@@ -15,7 +15,6 @@ process ISOQUANT{
 
     script:
     """
-    isoquant.py -d pacbio_ccs --fastq ${fasta.join(" ")} --genedb $gtf -r $genome --count_exons --output params.outdir/isoquant --threads $task.cpus
+    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_aligned.join(" ")} --genedb $gtf -r $genome --count_exons --output isoquant --threads 8
     """
-
 }

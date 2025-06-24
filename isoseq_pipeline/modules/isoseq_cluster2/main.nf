@@ -2,8 +2,8 @@
 
 process ISOSEQ_CLUSTER2{
     conda "envs/isoseq_env.yml"
-    label "process_medium"
-    publishDir params.outdir/clustered_bam
+    label "process_high"
+    publishDir "${params.outdir}/clustered_bam"
 
     input:
     path(bam_fofn)
@@ -14,7 +14,6 @@ process ISOSEQ_CLUSTER2{
 
     shell:
     """
-    mkdir -p clustered_bam
-    isoseq cluster2 $bam_fofn clustered.bam
+    isoseq cluster2 $bam_fofn clustered.bam -j 8
     """
 }

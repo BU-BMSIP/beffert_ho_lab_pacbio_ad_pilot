@@ -2,21 +2,21 @@
 
 process LIMA_SMARTBELL_DEMULTIPLEX {
     conda "envs/lima_env.yml"
-    label "process_medium"
-    publishDir params.outdir
+    label "process_high"
+    publishDir "${params.outdir}/smartbell_demux_reads"
 
     input:
-    path(bam)
+    tuple val(name), path(bam)
     path(kinnex_smartbell_adapters)
 
     output:
-    path("${bam.baseName}.demux.bam"), emit: bam_demux
-    path("*")
+    tuple val(name), path("${name}.demux.bam"), emit: bam_demux
+    path("${name}.demux*")
 
     // --guess selects only barcode pairs with a mean score ≥ 75
     // --guess-min-count 20 selects only barcode pairs with at ≥ 20 ZMWs
     shell:
     """
-    lima $bam $kinnex_smartbell_adapters ${bam.baseName}.demux.bam -j $task.cpus --hifi-preset SYMMETRIC --guess 75 --guess-min-count 20
+    lima $bam $kinnex_smartbell_adapters ${name}.demux --hifi-preset SYMMETRIC --guess 75 --guess-min-count 20 -j 10
     """
 }

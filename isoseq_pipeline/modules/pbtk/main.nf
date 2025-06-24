@@ -2,7 +2,7 @@
 
 process PBTK {
     conda "envs/pbtk_env.yml"
-    label "process_medium"
+    label "process_high"
     publishDir params.outdir
 
     input:
@@ -13,6 +13,6 @@ process PBTK {
 
     shell:
     """
-    bam2fasta -o ${bam_clustered.baseName}.fasta.gz $bam_clustered
+    bam2fasta -o ${bam_clustered.baseName}.fasta.gz $bam_clustered -j 10
     """
 }

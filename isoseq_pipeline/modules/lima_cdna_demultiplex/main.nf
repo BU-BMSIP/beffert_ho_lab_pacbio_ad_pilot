@@ -2,19 +2,19 @@
 
 process LIMA_CDNA_DEMULTIPLEX {
     conda "envs/lima_env.yml"
-    label "process_medium"
-    publishDir params.outdir
+    label "process_high"
+    publishDir "${params.outdir}/cdna_demux_reads"
 
     input:
-    path(segmented)
+    tuple val(name), path(segmented)
     path(cdna_adapters)
 
     output:
-    path("${segmented.baseName}.fl.bam"), emit: fl
-    path("*")
+    tuple val(name), path("${name}.fl.*.bam"), emit: fl
+    path("${name}.fl*")
 
     shell:
     """
-    lima $segmented $cdna_adapters ${segmented.baseName}.fl.bam -j $task.cpus --isoseq --peek-guess --overwrite-biosample-names
+    lima $segmented $cdna_adapters ${name}.fl --isoseq -j 10 --peek-guess --overwrite-biosample-names
     """
 }
