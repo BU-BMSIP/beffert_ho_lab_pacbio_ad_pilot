@@ -15,6 +15,6 @@ process ISOQUANT{
 
     script:
     """
-    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_aligned.join(" ")} --genedb $gtf -r $genome --count_exons --output ${params.outdir}/isoquant --threads 8
+    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_aligned.join(" ")} --genedb $gtf -r $genome --count_exons --output ${params.outdir}/isoquant --threads $task.cpus
     """
 }

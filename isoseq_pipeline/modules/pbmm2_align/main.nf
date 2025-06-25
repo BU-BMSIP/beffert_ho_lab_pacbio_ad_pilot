@@ -14,6 +14,6 @@ process PBMM2_ALIGN {
 
     shell:
     """
-    pbmm2 align -j 8 -J 8 --preset ISOSEQ --sort $bam_clustered $indexed_genome aligned.bam 
+    pbmm2 align -j $task.cpus -J $task.cpus --preset ISOSEQ --sort $bam_clustered $indexed_genome aligned.bam 
     """
 }

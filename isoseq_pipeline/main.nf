@@ -31,32 +31,42 @@ Channel.fromPath(params.reads)
 
     // demultiplex cDNA adapters
     LIMA_CDNA_DEMULTIPLEX(SKERA.out.segmented, params.cdna_adapters)
+    LIMA_CDNA_DEMULTIPLEX.out.fl.flatMap{ id, files -> files.collect { file -> [id, file] } }.set{ bam_cdna_demux_ch }
 
     // remove concatemers and keep polyA tails
-    ISOSEQ_REFINE(LIMA_CDNA_DEMULTIPLEX.out.fl, params.cdna_adapters)
+    ISOSEQ_REFINE(bam_cdna_demux_ch, params.cdna_adapters)
 
     // merge SMRT cells
-    MERGE_SMRTCELLS(ISOSEQ_REFINE.out.flnc)
+    //MERGE_SMRTCELLS(ISOSEQ_REFINE.out.flnc)
+    //ISOSEQ_REFINE.out.flnc.view()
+
+    ISOSEQ_REFINE.out.flnc
+        | collect()
+        | flatten()
+        | map { it instanceof Tuple ? it[1].toString() : it.toString() }
+        | filter { it.endsWith('.bam') || it.startsWith('/') }
+        | collectFile(name: 'flnc.fofn') { it }
+        | set_ch{ fofn_ch }
 
     // cluster
-    ISOSEQ_CLUSTER2(MERGE_SMRTCELLS.out.fofn)
+    ISOSEQ_CLUSTER2(fofn_ch)
 
     // convert bam to fasta --> I don't think I need this
     //PBTK(ISOSEQ_CLUSTER2.out.clustered_bam)
 
     // map to reference genome
     PBMM2_INDEX(params.genome)
-    PBMM2_ALIGN(ISOSEQ_CLUSTER2.out.clustered_bam, PBMM2_INDEX.out.indexed_genome)
+    //PBMM2_ALIGN(ISOSEQ_CLUSTER2.out.clustered_bam, PBMM2_INDEX.out.indexed_genome)
 
-     // isoform discovery: annotated gene, isoform, exon and intron quantification
-    ISOQUANT(PBMM2_ALIGN.out.aligned, params.gtf, params.genome)
+    // isoform discovery: annotated gene, isoform, exon and intron quantification
+    //ISOQUANT(PBMM2_ALIGN.out.aligned, params.gtf, params.genome)
 
     // collapse into unique isoforms --> can skip this and use Isoquant?
     //ISOSEQ_COLLAPSE(PBMM2_ALIGN.out.aligned, ISOSEQ_CLUSTER2.out.clustered_bam)
 
     // counts matrix generation
-    // TALON()
+    // TALON(PBMM2_ALIGN.out.aligned, params.genome, params.gtf, params.talon_config)
 
     // more analyses
-    // isoformanalyzer, deseq2, drimseq, dexseq
+    // isoformanalyzer, deseq2, drimseq, dexseq, pbfusion
 }

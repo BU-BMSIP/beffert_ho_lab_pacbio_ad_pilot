@@ -13,6 +13,6 @@ process PBMM2_INDEX {
 
     shell:
     """
-    pbmm2 index --preset ISOSEQ -j 8 $genome ${genome.baseName}.mmi
+    pbmm2 index --preset ISOSEQ -j 10 $genome ${genome.baseName}.mmi
     """
 }

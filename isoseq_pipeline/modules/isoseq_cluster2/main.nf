@@ -14,6 +14,6 @@ process ISOSEQ_CLUSTER2{
 
     shell:
     """
-    isoseq cluster2 $bam_fofn clustered.bam -j 8
+    isoseq cluster2 $bam_fofn clustered.bam -j 10
     """
 }
