@@ -15,6 +15,6 @@ process SKERA {
 
     shell:
     """
-    skera split $bam_demux $kinnex_segmentation_adapters ${name}.segmented.bam -j 10
+    skera split $bam_demux $kinnex_segmentation_adapters ${name}.segmented.bam -j 8
     """
 }

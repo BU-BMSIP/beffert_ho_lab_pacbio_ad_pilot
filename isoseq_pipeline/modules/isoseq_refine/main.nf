@@ -10,11 +10,11 @@ process ISOSEQ_REFINE{
     path(cdna_adapters)
 
     output:
-    tuple val(name), path("${name}.flnc.bam"), emit: flnc
+    tuple val(name), path("${name}*.flnc.bam"), emit: flnc
     path("${name}.flnc.transcriptset.xml")
 
     shell:
     """
-    isoseq refine $bam_fl $cdna_adapters ${name}.flnc.bam -j 10
+    isoseq refine $bam_fl $cdna_adapters ${name}.flnc.bam -j 8
     """
 }

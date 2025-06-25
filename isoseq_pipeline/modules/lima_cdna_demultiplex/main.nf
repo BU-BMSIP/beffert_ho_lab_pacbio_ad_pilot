@@ -10,11 +10,11 @@ process LIMA_CDNA_DEMULTIPLEX {
     path(cdna_adapters)
 
     output:
-    tuple val(name), path("${name}.fl.*.bam"), emit: fl
-    path("${name}.fl*")
+    tuple val(name), path("${name}.bam"), emit: fl
+    path("*")
 
     shell:
     """
-    lima $segmented $cdna_adapters ${name}.fl --isoseq -j 10 --peek-guess --overwrite-biosample-names
+    lima $segmented $cdna_adapters ${name}.bam --isoseq -j 8 --peek-guess --overwrite-biosample-names
     """
 }

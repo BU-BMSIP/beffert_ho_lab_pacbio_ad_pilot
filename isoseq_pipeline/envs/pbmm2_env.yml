@@ -4,4 +4,4 @@ channels:
 - bioconda 
 
 dependencies:
-- pbmm2=
+- pbmm2=1.17.0

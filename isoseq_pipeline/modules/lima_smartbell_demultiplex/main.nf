@@ -17,6 +17,6 @@ process LIMA_SMARTBELL_DEMULTIPLEX {
     // --guess-min-count 20 selects only barcode pairs with at ≥ 20 ZMWs
     shell:
     """
-    lima $bam $kinnex_smartbell_adapters ${name}.demux --hifi-preset SYMMETRIC --guess 75 --guess-min-count 20 -j 10
+    lima $bam $kinnex_smartbell_adapters ${name}.demux.bam --hifi-preset SYMMETRIC -j 8 --guess 75 --guess-min-count 20
     """
 }

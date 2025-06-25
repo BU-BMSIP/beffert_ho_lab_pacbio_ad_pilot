@@ -9,7 +9,7 @@ process ISOSEQ_CLUSTER2{
     path(bam_fofn)
 
     output:
-    path("${bam_fofn.baseName}.clustered.bam"), emit: clustered_bam
+    path("clustered.bam"), emit: clustered_bam
     path("*")
 
     shell:

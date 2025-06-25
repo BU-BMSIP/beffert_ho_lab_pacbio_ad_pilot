@@ -10,10 +10,10 @@ process PBMM2_ALIGN {
     path(indexed_genome)
 
     output:
-    path("${bam_clustered.baseName}.aligned.bam"), emit: aligned
+    path("aligned.bam"), emit: aligned
 
     shell:
     """
-    pbmm2 align -j 8 -J 10 --preset ISOSEQ --sort $bam_clustered $indexed_genome ${bam_clustered.baseName}.aligned.bam 
+    pbmm2 align -j 8 -J 8 --preset ISOSEQ --sort $bam_clustered $indexed_genome aligned.bam 
     """
 }
