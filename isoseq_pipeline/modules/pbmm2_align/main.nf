@@ -2,18 +2,19 @@
 
 process PBMM2_ALIGN {
     conda "envs/pbmm2_env.yml"
-    label "process_high"
+    label "process_very_high"
     publishDir "${params.outdir}/aligned_reads"
 
     input:
-    path(bam_clustered)
+    tuple val(name), path(bam_flnc)
     path(indexed_genome)
 
     output:
-    path("aligned.bam"), emit: aligned
+    tuple val(name), path("${bam_flnc.baseName}.aligned.bam"), emit: aligned
+    path("${bam_flnc.baseName}.aligned.bam.bai")
 
     shell:
     """
-    pbmm2 align -j $task.cpus -J $task.cpus --preset ISOSEQ --sort $bam_clustered $indexed_genome aligned.bam 
+    pbmm2 align -j 11 -J 11 --preset ISOSEQ --sort $bam_flnc $indexed_genome "${bam_flnc.baseName}.aligned.bam" 
     """
 }

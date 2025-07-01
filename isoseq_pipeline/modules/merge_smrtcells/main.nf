@@ -5,13 +5,13 @@ process MERGE_SMRTCELLS {
     publishDir "${params.outdir}/flnc_reads"
 
     input:
-    tuple val(name), path(bam_flnc)
+    path(bam_flnc)
 
     output:
     path("flnc.fofn"), emit: fofn
 
     script:
     """
-    ls ${bam_flnc.collect { it }.join(' ')} > flnc.fofn
+    realpath ${bam_flnc.join(' ')} > flnc.fofn
     """
 }
