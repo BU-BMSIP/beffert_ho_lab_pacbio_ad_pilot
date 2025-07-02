@@ -10,8 +10,7 @@ process PBMM2_ALIGN {
     path(indexed_genome)
 
     output:
-    tuple val(name), path("${bam_flnc.baseName}.aligned.bam"), emit: aligned
-    path("${bam_flnc.baseName}.aligned.bam.bai")
+    tuple val(name), path("${bam_flnc.baseName}.aligned.bam"), path("${bam_flnc.baseName}.aligned.bam.bai"), emit: aligned
 
     shell:
     """
