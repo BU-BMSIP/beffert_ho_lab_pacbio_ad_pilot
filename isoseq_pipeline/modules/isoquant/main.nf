@@ -15,6 +15,6 @@ process ISOQUANT{
 
     script:
     """
-    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_aligned.join(" ")} --genedb $gtf --complete_genedb -r $genome --count_exons --output ${params.outdir} --threads $task.cpus -p isoquant --sqanti_output --check_canonical --bam_tags RG,SM,PU,ID --read_group tag:SM
+    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_aligned.join(" ")} --genedb $gtf --complete_genedb -r $genome --count_exons --output ${params.outdir} --threads $task.cpus -p isoquant --check_canonical --bam_tags RG,SM,PU,ID --read_group tag:SM
     """
 }

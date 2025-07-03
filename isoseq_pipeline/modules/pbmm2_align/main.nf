@@ -6,14 +6,14 @@ process PBMM2_ALIGN {
     publishDir "${params.outdir}/aligned_reads"
 
     input:
-    tuple val(name), path(bam_flnc)
+    tuple val(name), path(bam_merged)
     path(indexed_genome)
 
     output:
-    tuple val(name), path("${bam_flnc.baseName}.aligned.bam"), path("${bam_flnc.baseName}.aligned.bam.bai"), emit: aligned
+    tuple val(name), path("${name}.aligned.bam"), path("${name}.aligned.bam.bai"), emit: aligned
 
     shell:
     """
-    pbmm2 align -j 11 -J 11 --preset ISOSEQ --sort $bam_flnc $indexed_genome "${bam_flnc.baseName}.aligned.bam" 
+    pbmm2 align -j 11 -J 11 --preset ISOSEQ --sort $bam_merged $indexed_genome "${name}.aligned.bam" 
     """
 }

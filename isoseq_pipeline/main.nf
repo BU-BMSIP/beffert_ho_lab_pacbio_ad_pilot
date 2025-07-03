@@ -8,6 +8,7 @@ include { ISOQUANT } from './modules/isoquant'
 include { PBMM2_INDEX } from './modules/pbmm2_index'
 include { PBMM2_ALIGN } from './modules/pbmm2_align'
 include { ISOSEQ_COLLAPSE } from './modules/isoseq_collapse'
+include { SAMTOOLS_MERGE } from './modules/samtools_merge'
 
 workflow{
 
@@ -33,14 +34,27 @@ Channel.fromPath(params.reads)
     // remove concatemers and keep polyA tails
     ISOSEQ_REFINE(bam_cdna_demux_ch, params.cdna_adapters)
 
+    // merge smrtcell technical replicates
+    ISOSEQ_REFINE.out.flnc
+        | map { bam ->
+            def file = bam[1]
+            def filename = file.getName()
+            def matcher = (filename =~ /IsoSeqX_(bc\d+)_5p--IsoSeqX_3p\.flnc\.bam/)
+            def bc = matcher.find() ? matcher.group(1) : 'unknown'
+            tuple(bc, file)
+        }
+        | groupTuple()
+        | set{ tech_rep_merge_ch }
+    SAMTOOLS_MERGE(tech_rep_merge_ch)
+
     // map to reference genome
     PBMM2_INDEX(params.genome)
-    PBMM2_ALIGN(ISOSEQ_REFINE.out.flnc, PBMM2_INDEX.out.indexed_genome)
+    PBMM2_ALIGN(SAMTOOLS_MERGE.out, PBMM2_INDEX.out.indexed_genome)
 
     // isoform discovery: annotated gene, isoform, exon and intron quantification
-    ISOQUANT(PBMM2_ALIGN.out.aligned, params.gtf, params.genome)
+    //ISOQUANT(PBMM2_ALIGN.out.aligned, params.gtf_subset, params.genome)
 
-    // stringtie merge and gffcompare for novel isoform + gene counts
+    // stringtie merge and gffcompare for novel isoform + gene counts?
 
     // more analyses
     // isoformanalyzer, deseq2, drimseq, dexseq, pbfusion
