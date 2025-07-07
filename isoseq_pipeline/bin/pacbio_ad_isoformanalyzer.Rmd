@@ -1,0 +1,179 @@
+```{r}
+# libraries
+if (!requireNamespace("BiocManager", quietly = TRUE)){
+    install.packages("BiocManager")
+    BiocManager::install()
+}
+BiocManager::install("IsoformSwitchAnalyzeR")
+
+library(IsoformSwitchAnalyzeR)
+```
+```{r}
+# import data
+lrkallisto_quant <- importIsoformExpression(
+    parentDir = "extdata/"
+```
+```{r}
+# generate design matrix
+myDesign <- data.frame(
+    sampleID = colnames(lrkallisto_quant$abundance)[-1],
+    condition = gsub('_.*', '', colnames(lrkallisto_quant$abundance)[-1])
+)
+
+# add sex and age(?) as covariates
+myDesign$sex <- factor(c('a','a','b','a','b','b'))
+myDesign$age <- factor(c('a','a','b','a','b','b'))
+```
+```{r}
+# create switchAnalyzeRlist
+switch_analyzer_list <- importRdata(
+    isoformCountMatrix   = lrkallisto_quant$counts,
+    isoformRepExpression = lrkallisto_quant$abundance,
+    designMatrix         = myDesign,
+    isoformExonAnnoation = "extdata/example.gtf.gz",
+    isoformNtFasta       = "extdata/example_isoform_nt.fasta.gz",
+    fixStringTieAnnotationProblem = TRUE,
+    showProgress = FALSE
+)
+summary(switch_analyzer_list)
+```
+```{r}
+'''
+filters for non-expressed genes/isoforms, identifies isoform switches, annotates open reading frames (ORF), 
+switches with and extracts both the nucleotide and peptide (amino acid) sequences and output them as two separate fasta files 
+'''
+switch_list <- isoformSwitchAnalysisPart1(
+    switchAnalyzeRlist   = switch_analyzer_list,
+    # pathToOutput = 'path/to/where/output/should/be/'
+    outputSequences      = TRUE, # change to TRUE whan analyzing your own data 
+    prepareForWebServers = FALSE  # change to TRUE if you will use webservers for external sequence analysis
+)
+
+extractSwitchSummary( switch_list )
+```
+```{r}
+'''
+importing and incorporating external sequence annotation, analysis of alternative splicing, 
+predicting functional consequences and visualizing both the general effects of isoform switches 
+and the individual isoform switches
+'''
+switch_list <- isoformSwitchAnalysisPart2(
+  switchAnalyzeRlist        = switch_analyzer_list, 
+  n                         = 10,    # if plotting was enabled, it would only output the top 10 switches
+  removeNoncodinORFs        = TRUE,
+  pathToCPC2resultFile      = "extdata/cpc2_result.txt",
+  pathToPFAMresultFile      = "extdata/pfam_results.txt",
+  pathToIUPred2AresultFile  = "extdata/iupred2a_result.txt.gz",
+  pathToSignalPresultFile   = "extdata/signalP_results.txt",
+  outputPlots               = FALSE  # keeps the function from outputting the plots from this example
+)
+```
+```{r}
+# extract top switching genes with predicted functional consequences
+extractTopSwitches(switch_analyzer_list, filterForConsequences = TRUE, n=20)
+```
+
+### visualizations
+```{r}
+# gene-specific visualizations
+switchPlot(
+    switch_analyzer_list,
+    gene='REC8',
+    condition1 = 'CTRL',
+    condition2 = 'AD',
+    localTheme = theme_bw(base_size = 13) # making text sightly larger for vignette
+)
+```
+```{r}
+### genome-wide global usage of isoform switches
+extractSwitchOverlap(
+    switch_analyzer_list,
+    filterForConsequences=TRUE,
+    plotIsoforms = FALSE
+)
+```
+
+## isoform switch consequence enrichment analysis
+```{r}
+# consequences of isoform switches by counting each type consequence separately
+extractConsequenceSummary(
+    switch_analyzer_list,
+    consequencesToAnalyze='all',
+    plotGenes = FALSE,           # enables analysis of genes (instead of isoforms)
+    asFractionTotal = FALSE      # enables analysis of fraction of significant features
+)
+```
+```{r}
+# analysis of the predicted consequences of isoform switches
+extractConsequenceEnrichment(
+    switch_analyzer_list,
+    consequencesToAnalyze='all',
+    analysisOppositeConsequence = TRUE,
+    localTheme = theme_bw(base_size = 14), # Increase font size in vignette
+    returnResult = FALSE # if TRUE returns a data.frame with the summary statistics
+)
+```
+```{r}
+extractConsequenceEnrichmentComparison(
+    switch_analyzer_list,
+    consequencesToAnalyze=c('domains_identified','coding_potential'),
+    analysisOppositeConsequence = TRUE,
+    returnResult = FALSE # if TRUE returns a data.frame with the summary statistics
+)
+```
+
+## splicing enrichment analyses
+```{r}
+extractSplicingEnrichment(
+    switch_analyzer_list,
+    returnResult = FALSE # if TRUE returns a data.frame with the summary statistics
+)
+```
+```{r}
+extractSplicingEnrichmentComparison(
+    switch_analyzer_list,
+    splicingToAnalyze = c('A3','A5','ATSS','ATTS'), # the splicing highlighted above
+    returnResult = FALSE # if TRUE returns a data.frame with the results
+)
+```
+```{r}
+# volcano plot
+ggplot(data=switch_analyzer_list$isoformFeatures, aes(x=dIF, y=-log10(isoform_switch_q_value))) +
+     geom_point(
+        aes( color=abs(dIF) > 0.1 & isoform_switch_q_value < 0.05 ), # default cutoff
+        size=1
+    ) +
+    geom_hline(yintercept = -log10(0.05), linetype='dashed') + # default cutoff
+    geom_vline(xintercept = c(-0.1, 0.1), linetype='dashed') + # default cutoff
+    facet_wrap( ~ condition_2) +
+    #facet_grid(condition_1 ~ condition_2) + # alternative to facet_wrap if you have overlapping conditions
+    scale_color_manual('Signficant\nIsoform Switch', values = c('black','red')) +
+    labs(x='dIF', y='-Log10 ( Isoform Switch Q Value )') +
+    theme_bw()
+```
+```{r}
+# Switch vs Gene changes
+ggplot(data=switch_analyzer_list$isoformFeatures, aes(x=gene_log2_fold_change, y=dIF)) +
+    geom_point(
+        aes( color=abs(dIF) > 0.1 & isoform_switch_q_value < 0.05 ), # default cutoff
+        size=1
+    ) + 
+    facet_wrap(~ condition_2) +
+    #facet_grid(condition_1 ~ condition_2) + # alternative to facet_wrap if you have overlapping conditions
+    geom_hline(yintercept = 0, linetype='dashed') +
+    geom_vline(xintercept = 0, linetype='dashed') +
+    scale_color_manual('Signficant\nIsoform Switch', values = c('black','red')) +
+    labs(x='Gene log2 fold change', y='dIF') +
+    theme_bw()
+```
+```{r}
+# global consequence analysis
+extractConsequenceSummary( switch_list )
+extractConsequenceEnrichment( switch_list )
+extractConsequenceGenomeWide( switch_list )
+
+# global splicing analysis
+extractSplicingSummary( switch_list )
+extractSplicingEnrichment( switch_list )
+extractSplicingGenomeWide( switch_list )
+```

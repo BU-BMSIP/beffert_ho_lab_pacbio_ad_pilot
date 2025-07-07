@@ -11,15 +11,15 @@ include { ISOSEQ_COLLAPSE } from './modules/isoseq_collapse'
 include { SAMTOOLS_MERGE } from './modules/samtools_merge'
 
 workflow{
-
-Channel.fromPath(params.reads)
-    | map { bam ->
-        def base = bam.baseName
-        def matcher = (base =~ /^(.*?)(?:\.hifi_reads.*)?$/)
-        def shortName = matcher.matches() ? matcher[0][1] : base
-        return tuple(shortName, bam)
-    }
-    | set{ bam_ch }
+    // format .bam files
+    Channel.fromPath(params.reads)
+        | map { bam ->
+            def base = bam.baseName
+            def matcher = (base =~ /^(.*?)(?:\.hifi_reads.*)?$/)
+            def shortName = matcher.matches() ? matcher[0][1] : base
+            return tuple(shortName, bam)
+        }
+        | set{ bam_ch }
 
     // demultiplex kinnex smartbell adapters
     LIMA_SMARTBELL_DEMULTIPLEX(bam_ch, params.kinnex_smartbell_adapters)
@@ -45,17 +45,43 @@ Channel.fromPath(params.reads)
         }
         | groupTuple()
         | set{ tech_rep_merge_ch }
+
+    // sort first?
     SAMTOOLS_MERGE(tech_rep_merge_ch)
 
     // map to reference genome
     PBMM2_INDEX(params.genome)
     PBMM2_ALIGN(SAMTOOLS_MERGE.out, PBMM2_INDEX.out.indexed_genome)
 
-    // isoform discovery: annotated gene, isoform, exon and intron quantification
-    //ISOQUANT(PBMM2_ALIGN.out.aligned, params.gtf_subset, params.genome)
+    PBMM2_ALIGN.out.aligned
+        | collect()
+        | map { all_samples ->
+            def names = all_samples.collect { it[0] }
+            def bams = all_samples.collect { it[1] }
+            def bais = all_samples.collect { it[2] }
+            tuple(names, bams, bais) }
+        | view()
+
+    // isoform discovery and counts matrix generation [annotated gene, isoform, exon and intron quantification]
+    //ISOQUANT(PBMM2_ALIGN.out.aligned.collect, params.gtf, params.genome)
+
+    // re-quantify to increase accuracy with kallisto
+    //t2g file
+    //GFFREAD(params.genome, params.gtf)
+    //KALLISTO_INDEX(GFFREAD.out)
+    //KALLISTO_BUS(fastq, KALLISTO_INDEX.out) //need to generate fastq
+    //BUSTOOLS_SORT(KALLISTO_BUS.out.bus)
+    //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, t2g)
+    //KALLISTO_QUANT_TCC(BUSTOOLS_COUNT.out.counts_mtx, KALLISTO_INDEX.out, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, t2g)
+
+    // isoformswitchanalyzer
+    //ISOFORMSWITCHANALYZER(KALLISTO_QUANT_TCC.out)
+
+    // more analyses
+    // deseq2, drimseq, dexseq, pbfusion
 
     // stringtie merge and gffcompare for novel isoform + gene counts?
 
-    // more analyses
-    // isoformanalyzer, deseq2, drimseq, dexseq, pbfusion
+    // viz
+    // swan or ggtranscript or itv
 }
