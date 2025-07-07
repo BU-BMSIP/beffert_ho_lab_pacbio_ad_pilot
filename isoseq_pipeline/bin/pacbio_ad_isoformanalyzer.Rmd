@@ -7,31 +7,41 @@ if (!requireNamespace("BiocManager", quietly = TRUE)){
 BiocManager::install("IsoformSwitchAnalyzeR")
 
 library(IsoformSwitchAnalyzeR)
+library(ggplot2)
+```
+```{r}
+# file paths
+
+gtf_file = "./refs/"
+isoform_fasta = ""
+kallisto_quant = "./results/"
+output_path = "./results/isoformanalyzer/"
+
 ```
 ```{r}
 # import data
 lrkallisto_quant <- importIsoformExpression(
-    parentDir = "extdata/"
+    parentDir = kallisto_quant
 ```
 ```{r}
 # generate design matrix
-myDesign <- data.frame(
+design <- data.frame(
     sampleID = colnames(lrkallisto_quant$abundance)[-1],
     condition = gsub('_.*', '', colnames(lrkallisto_quant$abundance)[-1])
 )
 
 # add sex and age(?) as covariates
-myDesign$sex <- factor(c('a','a','b','a','b','b'))
-myDesign$age <- factor(c('a','a','b','a','b','b'))
+design$sex <- factor(c('a','a','b','a','b','b'))
+design$age <- factor(c('a','a','b','a','b','b'))
 ```
 ```{r}
 # create switchAnalyzeRlist
 switch_analyzer_list <- importRdata(
     isoformCountMatrix   = lrkallisto_quant$counts,
     isoformRepExpression = lrkallisto_quant$abundance,
-    designMatrix         = myDesign,
-    isoformExonAnnoation = "extdata/example.gtf.gz",
-    isoformNtFasta       = "extdata/example_isoform_nt.fasta.gz",
+    designMatrix         = design,
+    isoformExonAnnoation = gtf_file,
+    isoformNtFasta       = isoform_fasta
     fixStringTieAnnotationProblem = TRUE,
     showProgress = FALSE
 )
@@ -44,9 +54,9 @@ switches with and extracts both the nucleotide and peptide (amino acid) sequence
 '''
 switch_list <- isoformSwitchAnalysisPart1(
     switchAnalyzeRlist   = switch_analyzer_list,
-    # pathToOutput = 'path/to/where/output/should/be/'
-    outputSequences      = TRUE, # change to TRUE whan analyzing your own data 
-    prepareForWebServers = FALSE  # change to TRUE if you will use webservers for external sequence analysis
+    pathToOutput = output_path
+    outputSequences      = TRUE,
+    prepareForWebServers = FALSE 
 )
 
 extractSwitchSummary( switch_list )
@@ -61,7 +71,7 @@ switch_list <- isoformSwitchAnalysisPart2(
   switchAnalyzeRlist        = switch_analyzer_list, 
   n                         = 10,    # if plotting was enabled, it would only output the top 10 switches
   removeNoncodinORFs        = TRUE,
-  pathToCPC2resultFile      = "extdata/cpc2_result.txt",
+  pathToCPC2resultFile      = "{output_path}/cpc2_result.txt",
   pathToPFAMresultFile      = "extdata/pfam_results.txt",
   pathToIUPred2AresultFile  = "extdata/iupred2a_result.txt.gz",
   pathToSignalPresultFile   = "extdata/signalP_results.txt",

@@ -5,14 +5,15 @@ process GFFREAD {
     publishDir "${params.outdir}/transcriptome"
 
     input:
+    path(isoquant_gtf)
     path(genome)
-    path(gtf)
+    
 
     output:
     path("transcriptome.fa")
 
     shell:
     """
-    gffread -w transcriptome.fa -g ${genome} ${gtf}
+    gffread -w transcriptome.fa -g $genome $isoquant_gtf
     """
 }

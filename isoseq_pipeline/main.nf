@@ -9,6 +9,12 @@ include { PBMM2_INDEX } from './modules/pbmm2_index'
 include { PBMM2_ALIGN } from './modules/pbmm2_align'
 include { ISOSEQ_COLLAPSE } from './modules/isoseq_collapse'
 include { SAMTOOLS_MERGE } from './modules/samtools_merge'
+include { GFFREAD } from './modules/gffread'
+include { KALLISTO_INDEX } from './modules/kallisto_index'
+include { KALLISTO_BUS } from './modules/kallisto_bus'
+include { BUSTOOLS_SORT } from './modules/bustools_sort'
+include { BUSTOOLS_COUNT } from './modules/bustools_count'
+include { KALLISTO_QUANT_TCC } from './modules/kallisto_quant_tcc'
 
 workflow{
     // format .bam files
@@ -45,28 +51,31 @@ workflow{
         }
         | groupTuple()
         | set{ tech_rep_merge_ch }
-
-    // sort first?
-    SAMTOOLS_MERGE(tech_rep_merge_ch)
+    SAMTOOLS_MERGE(tech_rep_merge_ch) // sort first?
 
     // map to reference genome
     PBMM2_INDEX(params.genome)
     PBMM2_ALIGN(SAMTOOLS_MERGE.out, PBMM2_INDEX.out.indexed_genome)
 
-    // format for isoquant
+    // isoform discovery and counts matrix generation [annotated gene, isoform, exon and intron quantification]
     def alignedList = PBMM2_ALIGN.out.aligned
     def names  = alignedList.map{ it[0] }.collect()
     def bams = alignedList.map{ it[1] }.collect()
     def bais = alignedList.map{ it[2] }.collect() 
-
-    // isoform discovery and counts matrix generation [annotated gene, isoform, exon and intron quantification]
     ISOQUANT(names, bams, bais, params.gtf, params.genome)
 
-    // re-quantify to increase accuracy with kallisto
-    //t2g file
-    //GFFREAD(params.genome, params.gtf)
+    // re-quantify to increase accuracy with kallisto (for isoformswitchanalyzer)
+
+    //isoquant transcriptome GTF to FASTA
+    //GFFREAD(ISOQUANT.out.combined_gtf, params.genome)
+    
+    ///////generate t2g file/////////
+
+    //generate fastq for kallisto
+    //PBTK(PBMM2_ALIGN.out.aligned)
+    
     //KALLISTO_INDEX(GFFREAD.out)
-    //KALLISTO_BUS(fastq, KALLISTO_INDEX.out) //need to generate fastq
+    //KALLISTO_BUS(PBTK.out, KALLISTO_INDEX.out)
     //BUSTOOLS_SORT(KALLISTO_BUS.out.bus)
     //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, t2g)
     //KALLISTO_QUANT_TCC(BUSTOOLS_COUNT.out.counts_mtx, KALLISTO_INDEX.out, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, t2g)
@@ -82,4 +91,5 @@ workflow{
     // viz
     // swan or ggtranscript or itv
 }
-//Duration: 5h 11m 32s to demux to alignment
+
+//Duration: 5h 11m 32s from start to PBMM2_ALIGN
