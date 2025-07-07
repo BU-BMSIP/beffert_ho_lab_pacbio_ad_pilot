@@ -53,17 +53,14 @@ workflow{
     PBMM2_INDEX(params.genome)
     PBMM2_ALIGN(SAMTOOLS_MERGE.out, PBMM2_INDEX.out.indexed_genome)
 
-    PBMM2_ALIGN.out.aligned
-        | collect()
-        | map { all_samples ->
-            def names = all_samples.collect { it[0] }
-            def bams = all_samples.collect { it[1] }
-            def bais = all_samples.collect { it[2] }
-            tuple(names, bams, bais) }
-        | view()
+    // format for isoquant
+    def alignedList = PBMM2_ALIGN.out.aligned
+    def names  = alignedList.map{ it[0] }.collect()
+    def bams = alignedList.map{ it[1] }.collect()
+    def bais = alignedList.map{ it[2] }.collect() 
 
     // isoform discovery and counts matrix generation [annotated gene, isoform, exon and intron quantification]
-    //ISOQUANT(PBMM2_ALIGN.out.aligned.collect, params.gtf, params.genome)
+    ISOQUANT(names, bams, bais, params.gtf, params.genome)
 
     // re-quantify to increase accuracy with kallisto
     //t2g file
@@ -85,3 +82,4 @@ workflow{
     // viz
     // swan or ggtranscript or itv
 }
+//Duration: 5h 11m 32s to demux to alignment

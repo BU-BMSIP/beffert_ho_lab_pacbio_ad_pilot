@@ -6,7 +6,9 @@ process ISOQUANT{
     publishDir "${params.outdir}/isoquant"
 
     input:
-    tuple val(name), path(bam_sorted), path(bam_index)
+    val(name)
+    path(bam_sorted)
+    path(bai)
     path(gtf)
     path(genome)
 
@@ -15,6 +17,6 @@ process ISOQUANT{
 
     script:
     """
-    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_sorted.join(" ")} --genedb $gtf --complete_genedb -r $genome --count_exons --output ${params.outdir} --threads $task.cpus -p isoquant --check_canonical --labels ${name.join(",")}
+    isoquant.py -d pacbio_ccs --fl_data --bam ${bam_sorted.join(" ")} --genedb $gtf --complete_genedb -r $genome --count_exons --output ${params.outdir} --threads $task.cpus -p isoquant --check_canonical --labels ${name.join(" ")}
     """
 }
