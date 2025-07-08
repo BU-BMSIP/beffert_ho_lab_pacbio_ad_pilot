@@ -9,12 +9,14 @@ include { PBMM2_INDEX } from './modules/pbmm2_index'
 include { PBMM2_ALIGN } from './modules/pbmm2_align'
 include { ISOSEQ_COLLAPSE } from './modules/isoseq_collapse'
 include { SAMTOOLS_MERGE } from './modules/samtools_merge'
+include { SAMTOOLS_FASTQ } from './modules/samtools_fastq'
 include { GFFREAD } from './modules/gffread'
 include { KALLISTO_INDEX } from './modules/kallisto_index'
 include { KALLISTO_BUS } from './modules/kallisto_bus'
 include { BUSTOOLS_SORT } from './modules/bustools_sort'
 include { BUSTOOLS_COUNT } from './modules/bustools_count'
 include { KALLISTO_QUANT_TCC } from './modules/kallisto_quant_tcc'
+include { BUSPARSE } from './modules/busparse'
 
 workflow{
     // format .bam files
@@ -58,32 +60,34 @@ workflow{
     PBMM2_ALIGN(SAMTOOLS_MERGE.out, PBMM2_INDEX.out.indexed_genome)
 
     // isoform discovery and counts matrix generation [annotated gene, isoform, exon and intron quantification]
-    def alignedList = PBMM2_ALIGN.out.aligned
-    def names  = alignedList.map{ it[0] }.collect()
-    def bams = alignedList.map{ it[1] }.collect()
-    def bais = alignedList.map{ it[2] }.collect() 
-    ISOQUANT(names, bams, bais, params.gtf, params.genome)
+    // def alignedList = PBMM2_ALIGN.out.aligned
+    // def names  = alignedList.map{ it[0] }.collect()
+    // def bams = alignedList.map{ it[1] }.collect()
+    // def bais = alignedList.map{ it[2] }.collect() 
+    // ISOQUANT(names, bams, bais, params.gtf, params.genome)
 
     // re-quantify to increase accuracy with kallisto (for isoformswitchanalyzer)
 
     //isoquant transcriptome GTF to FASTA
     //GFFREAD(ISOQUANT.out.combined_gtf, params.genome)
+    GFFREAD(params.isoquant_gtf, params.genome)
     
-    ///////generate t2g file/////////
+    //generate t2g file
+    BUSPARSE(GFFREAD.out)
 
     //generate fastq for kallisto
-    //PBTK(PBMM2_ALIGN.out.aligned)
+    SAMTOOLS_FASTQ(PBMM2_ALIGN.out.aligned)
     
-    //KALLISTO_INDEX(GFFREAD.out)
-    //KALLISTO_BUS(PBTK.out, KALLISTO_INDEX.out)
+    KALLISTO_INDEX(GFFREAD.out)
+    KALLISTO_BUS(SAMTOOLS_FASTQ.out.collect(), KALLISTO_INDEX.out)
     //BUSTOOLS_SORT(KALLISTO_BUS.out.bus)
-    //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, t2g)
-    //KALLISTO_QUANT_TCC(BUSTOOLS_COUNT.out.counts_mtx, KALLISTO_INDEX.out, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, t2g)
+    //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, BUSPARSE.out)
+    //KALLISTO_QUANT_TCC(BUSTOOLS_COUNT.out.counts_mtx, KALLISTO_INDEX.out, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, BUSPARSE.out)
 
     // isoformswitchanalyzer
     //ISOFORMSWITCHANALYZER(KALLISTO_QUANT_TCC.out)
 
-    // more analyses
+    // more analyses using kallisto counts
     // deseq2, drimseq, dexseq, pbfusion
 
     // stringtie merge and gffcompare for novel isoform + gene counts?
@@ -93,3 +97,4 @@ workflow{
 }
 
 //Duration: 5h 11m 32s from start to PBMM2_ALIGN
+//Isoquant takes HOURS

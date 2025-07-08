@@ -14,6 +14,7 @@ process GFFREAD {
 
     shell:
     """
-    gffread -w transcriptome.fa -g $genome $isoquant_gtf
+    gunzip -c $genome > genome.fa
+    gffread $isoquant_gtf -g genome.fa -w transcriptome.fa
     """
 }

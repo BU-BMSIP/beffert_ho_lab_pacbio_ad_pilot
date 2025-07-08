@@ -11,8 +11,9 @@ process KALLISTO_INDEX{
     output:
     path("transcriptome.idx")
 
+    //must run with 8 cores otherwise get weird cpu error
     shell:
     """
-    kallisto index -i transcriptome.idx -k 63 $transcriptome_fasta
+    kallisto index -i transcriptome.idx -k 63 -t 8 $transcriptome_fasta
     """
 }

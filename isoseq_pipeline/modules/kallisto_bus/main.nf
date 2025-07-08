@@ -2,7 +2,7 @@
 
 process KALLISTO_BUS{
     conda "envs/kallisto_env.yml"
-    label "process_very_high"
+    label "process_high"
     publishDir "${params.outdir}/kallisto"
 
     input:
@@ -18,6 +18,6 @@ process KALLISTO_BUS{
 
     shell:
     """
-    kallisto bus -t $task.cpus --long --threshold 0.8 -x bulk -i $indexed_transcriptome -o . $fastq
+    kallisto bus -t $task.cpus --long --threshold 0.8 -x bulk -i $indexed_transcriptome -o . ${fastq.join(" ")}
     """
 }

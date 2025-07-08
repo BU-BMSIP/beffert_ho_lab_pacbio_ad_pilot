@@ -15,6 +15,7 @@ process ISOQUANT{
     output:
     path("*")
 
+    // add --high_memory and increase threads
     script:
     """
     isoquant.py -d pacbio_ccs --fl_data --bam ${bam_sorted.join(" ")} --genedb $gtf --complete_genedb -r $genome --count_exons --output ${params.outdir} --threads $task.cpus -p isoquant --check_canonical --labels ${name.join(" ")}

@@ -12,11 +12,10 @@ library(ggplot2)
 ```{r}
 # file paths
 
-gtf_file = "./refs/"
-isoform_fasta = ""
+gtf_file = "./results/isoquant/isoquant.transcript_models.gtf"
+isoform_fasta = "./results/transcriptome/transcriptome.fa"
 kallisto_quant = "./results/"
-output_path = "./results/isoformanalyzer/"
-
+output_path = "./results/isoformswitchanalyzer/"
 ```
 ```{r}
 # import data
@@ -31,8 +30,8 @@ design <- data.frame(
 )
 
 # add sex and age(?) as covariates
-design$sex <- factor(c('a','a','b','a','b','b'))
-design$age <- factor(c('a','a','b','a','b','b'))
+#design$sex <- factor(c('a','a','b','a','b','b'))
+#design$age <- factor(c('a','a','b','a','b','b'))
 ```
 ```{r}
 # create switchAnalyzeRlist

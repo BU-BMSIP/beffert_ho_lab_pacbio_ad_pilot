@@ -12,98 +12,71 @@ library(tidyr)
 
 ```{r}
 # read in raw counts matrix
-counts_raw <- read.table("./count_matrix/FLNC_count_matrix.txt", header=TRUE, sep="") %>%
-  arrange(associated_gene)
 
-counts_raw
-```
+new_col_names <- c("gene","bc01_CTRL", "bc02_CTRL", "bc03_CTRL", "bc04_CTRL", "bc09_AD", "bc10_AD", "bc11_AD", "bc12_AD")
 
-```{r}
-# sum all isoform counts by gene
-counts_by_gene <- counts_raw %>%
-  group_by(associated_gene) %>%
-  summarise(across(-c(1, 1), sum))
+counts <- read.delim("../results/isoquant/isoquant.discovered_gene_grouped_counts.linear.tsv", header=TRUE, sep="\t") %>%
+  pivot_wider(names_from = group_id, values_from = count) %>%
+  select("X.feature_id", sort(colnames(.))) %>%
+  arrange(X.feature_id) %>%
+  as.data.frame() %>%
+  na.omit()
 
-length(counts_by_gene$associated_gene)
+names(counts) <- new_col_names
 
-head(counts_by_gene)
+nrow(counts)
+head(counts)
 ```
 
 ```{r}
 # filter counts to keep genes with at least 2 samples with counts >= 10
 
-filtered_counts <- counts_by_gene[rowSums(counts_by_gene[-1] >= 10)>= 2,]
+counts_filtered <- counts[rowSums(counts[-1] >= 10)>= 2, ]
 
-length(filtered_counts$associated_gene)
-
-head(filtered_counts)
+nrow(counts_filtered)
+counts_filtered
 ```
 
 ```{r}
 # create deseq2 object
 
 # counts matrix
-counts_matrix <- as.matrix(filtered_counts[-1])
-row.names(counts_matrix) <- filtered_counts$associated_gene
+counts_matrix <- as.matrix(counts_filtered[-1])
+row.names(counts_matrix) <- counts_filtered$gene
+```
 
+```{r}
 # col data
 col_data <- tibble(
-  sample_name = colnames(filtered_counts[-1])) %>%
-  separate(sample_name,c("condition","replicate"),sep="_",remove=FALSE) %>%
+  sample_name = colnames(counts_filtered[-1])) %>%
+  separate(sample_name,c("sample","condition"),sep="_",remove=FALSE) %>%
   mutate(condition=as.factor(condition))
 
-design <- formula(~ condition)
+col_data
+```
 
+```{r}
+# design matrix and dds object
+design <- formula(~ condition)
 dds <- DESeqDataSetFromMatrix(
   countData=counts_matrix,
   colData=col_data,
   design=design
 )
-
-col_data
 ```
+
 
 ```{r}
 # run deseq2
 dds <- DESeq(dds)
 res <- results(dds) %>%
   as.data.frame()
-```
 
-```{r}
-# filter for significant genes (padj < 0.05)
-
-degs <- res %>%
-  mutate(gene = rownames(.)) %>%
+res %>%
   arrange(padj)
-
-degs
 ```
-
-
-
-
 ```{r}
-# volcano plot of significant degs with 1.5 log2fc red lines
+# pca
 
-top10_genes <- degs %>%
-  arrange(padj) %>%
-  head(1)
-
-volcano_plot <- degs %>%
-  mutate(log10_adj_pvalue = -log10(padj)) %>%
-  ggplot(aes(x = log2FoldChange, y = log10_adj_pvalue)) +
-  geom_point() +
-  geom_vline(xintercept = c(-1.5, 1.5), linetype = "dashed", color = "red") +
-  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "red") +
-  geom_text_repel(data = top10_genes,
-                  aes(label = gene, x = log2FoldChange, y = -log10(padj)),
-                  size = 3,
-                  max.overlaps = 10,
-                  box.padding = 0.5,
-                  segment.color = "grey50") +
-  theme_minimal() +
-  labs(x = "Log2 Fold Change", y = "-Log10 padj", title = "Volcano Plot with Significant Genes Labelled")
-
-volcano_plot
 ```
+

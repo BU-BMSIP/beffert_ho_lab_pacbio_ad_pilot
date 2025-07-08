@@ -11,61 +11,66 @@ library(tidyr)
 ## DESeq2
 ```{r}
 # read in raw counts matrix
-counts_raw <- read.table("./count_matrix/FLNC_count_matrix.txt", header=TRUE, sep="") %>%
-  arrange(associated_gene)
 
-counts_raw
+new_col_names <- c("transcript","bc01_CTRL", "bc02_CTRL", "bc03_CTRL", "bc04_CTRL", "bc09_AD", "bc10_AD", "bc11_AD", "bc12_AD")
+
+counts <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped_counts.linear.tsv", header=TRUE, sep="\t") %>%
+  pivot_wider(names_from = group_id, values_from = count) %>%
+  select("X.feature_id", sort(colnames(.))) %>%
+  arrange(X.feature_id) %>%
+  as.data.frame() %>%
+  na.omit()
+
+names(counts) <- new_col_names
+
+nrow(counts)
+head(counts)
 ```
 
 ```{r}
-# filter counts to keep genes with at least 2 samples with counts >= 10
+# filter counts to keep transcripts with at least 2 samples with counts >= 10
 
-filtered_counts <- counts_raw[rowSums(counts_raw[-1] >= 5)>= 2,]
+counts_filtered <- counts[rowSums(counts[-1] >= 10)>= 2, ]
 
-length(filtered_counts$associated_gene)
-
-filtered_counts
+nrow(counts_filtered)
+counts_filtered
 ```
 
 ```{r}
 # create deseq2 object
 
 # counts matrix
-counts_matrix <- as.matrix(filtered_counts[, -c(1,2)])
-row.names(counts_matrix) <- filtered_counts$isoform
+counts_matrix <- as.matrix(counts_filtered[-1])
+row.names(counts_matrix) <- counts_filtered$transcript
+```
 
+```{r}
 # col data
 col_data <- tibble(
-  sample_name = colnames(filtered_counts[-c(1,2)])) %>%
-  separate(sample_name,c("condition","replicate"),sep="_",remove=FALSE) %>%
+  sample_name = colnames(counts_filtered[-1])) %>%
+  separate(sample_name,c("sample","condition"),sep="_",remove=FALSE) %>%
   mutate(condition=as.factor(condition))
 
-design <- formula(~ condition)
+col_data
+```
 
+```{r}
+# design matrix and dds object
+design <- formula(~ condition)
 dds <- DESeqDataSetFromMatrix(
   countData=counts_matrix,
   colData=col_data,
   design=design
 )
 ```
-
 ```{r}
 # run deseq2
 dds <- DESeq(dds)
 res <- results(dds) %>%
   as.data.frame()
-```
 
-```{r}
-# join associated_gene name to results based on isoform
-
-deis <- res %>%
-  mutate(isoform = rownames(.)) %>%
-  arrange(padj) %>%
-  left_join(., filtered_counts, by = "isoform") %>%
-  select("isoform", "associated_gene", everything())
-
-deis
+res %>%
+  arrange(padj)
 ```
 
 ```{r}
