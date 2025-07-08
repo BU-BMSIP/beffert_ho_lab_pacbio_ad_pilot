@@ -1,82 +1,104 @@
 ```{r}
 # libraries
-if (!requireNamespace("BiocManager", quietly = TRUE)){
-    install.packages("BiocManager")
-    BiocManager::install()
-}
-BiocManager::install("IsoformSwitchAnalyzeR")
+# if (!requireNamespace("BiocManager", quietly = TRUE)){
+#     install.packages("BiocManager")
+#     BiocManager::install()
+# }
+# BiocManager::install("IsoformSwitchAnalyzeR")
 
 library(IsoformSwitchAnalyzeR)
 library(ggplot2)
+library(dplyr)
+library(tidyr)
 ```
-```{r}
-# file paths
 
-gtf_file = "./results/isoquant/isoquant.transcript_models.gtf"
-isoform_fasta = "./results/transcriptome/transcriptome.fa"
-kallisto_quant = "./results/"
-output_path = "./results/isoformswitchanalyzer/"
+```{r}
+# format files
+gtf_file <- "../results/isoquant/isoquant.transcript_models.gtf"
+isoform_fasta <- "../results/transcriptome/transcriptome.fa"
+output_path <- "../results/isoformswitchanalyzer"
+
+new_col_names <- c("isoform_id","bc01_CTRL", "bc02_CTRL", "bc03_CTRL", "bc04_CTRL", "bc09_AD", "bc10_AD", "bc11_AD", "bc12_AD")
+counts <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped_counts.tsv", sep = "\t")
+
+
+names(counts) <- new_col_names
+counts
 ```
 ```{r}
-# import data
-lrkallisto_quant <- importIsoformExpression(
-    parentDir = kallisto_quant
+# abundance (transcripts per million)
+abundance <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped_tpm.tsv", sep = "\t")
+
+names(abundance) <- new_col_names
+abundance
 ```
+
 ```{r}
 # generate design matrix
+
+sampleID <- colnames(counts[-1])
+condition <- gsub('.*_', '', colnames(counts[-1]))
 design <- data.frame(
-    sampleID = colnames(lrkallisto_quant$abundance)[-1],
-    condition = gsub('_.*', '', colnames(lrkallisto_quant$abundance)[-1])
+    sampleID = sampleID,
+    condition = condition
 )
+
+design
 
 # add sex and age(?) as covariates
 #design$sex <- factor(c('a','a','b','a','b','b'))
 #design$age <- factor(c('a','a','b','a','b','b'))
 ```
+
 ```{r}
 # create switchAnalyzeRlist
+
 switch_analyzer_list <- importRdata(
-    isoformCountMatrix   = lrkallisto_quant$counts,
-    isoformRepExpression = lrkallisto_quant$abundance,
+    isoformCountMatrix   = counts,
+    isoformRepExpression = abundance,
     designMatrix         = design,
     isoformExonAnnoation = gtf_file,
-    isoformNtFasta       = isoform_fasta
+    isoformNtFasta       = isoform_fasta,
     fixStringTieAnnotationProblem = TRUE,
-    showProgress = FALSE
+    showProgress = FALSE,
+    ignoreAfterBar = TRUE
 )
 summary(switch_analyzer_list)
 ```
+
 ```{r}
-'''
-filters for non-expressed genes/isoforms, identifies isoform switches, annotates open reading frames (ORF), 
-switches with and extracts both the nucleotide and peptide (amino acid) sequences and output them as two separate fasta files 
-'''
+
+# filters for non-expressed genes/isoforms, identifies isoform switches, annotates open reading frames (ORF), 
+# switches with and extracts both the nucleotide and peptide (amino acid) sequences and output them as two separate fasta files 
+
 switch_list <- isoformSwitchAnalysisPart1(
     switchAnalyzeRlist   = switch_analyzer_list,
-    pathToOutput = output_path
+    pathToOutput = output_path,
     outputSequences      = TRUE,
     prepareForWebServers = FALSE 
 )
 
 extractSwitchSummary( switch_list )
 ```
+
 ```{r}
-'''
-importing and incorporating external sequence annotation, analysis of alternative splicing, 
-predicting functional consequences and visualizing both the general effects of isoform switches 
-and the individual isoform switches
-'''
+
+# importing and incorporating external sequence annotation, analysis of alternative splicing, 
+# predicting functional consequences and visualizing both the general effects of isoform switches 
+# and the individual isoform switches
+
 switch_list <- isoformSwitchAnalysisPart2(
   switchAnalyzeRlist        = switch_analyzer_list, 
-  n                         = 10,    # if plotting was enabled, it would only output the top 10 switches
+  n                         = 10,
   removeNoncodinORFs        = TRUE,
-  pathToCPC2resultFile      = "{output_path}/cpc2_result.txt",
-  pathToPFAMresultFile      = "extdata/pfam_results.txt",
-  pathToIUPred2AresultFile  = "extdata/iupred2a_result.txt.gz",
-  pathToSignalPresultFile   = "extdata/signalP_results.txt",
-  outputPlots               = FALSE  # keeps the function from outputting the plots from this example
+  pathToCPC2resultFile      = file.path(output_path, "cpc2_result.txt"),
+  pathToPFAMresultFile      = file.path(output_path, "pfam_results.txt"),
+  pathToIUPred2AresultFile  = file.path(output_path, "iupred2a_result.txt.gz"),
+  pathToSignalPresultFile   = file.path(output_path, "signalP_results.txt"),
+  outputPlots               = FALSE
 )
 ```
+
 ```{r}
 # extract top switching genes with predicted functional consequences
 extractTopSwitches(switch_analyzer_list, filterForConsequences = TRUE, n=20)

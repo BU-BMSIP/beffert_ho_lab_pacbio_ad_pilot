@@ -12,11 +12,7 @@ include { SAMTOOLS_MERGE } from './modules/samtools_merge'
 include { SAMTOOLS_FASTQ } from './modules/samtools_fastq'
 include { GFFREAD } from './modules/gffread'
 include { KALLISTO_INDEX } from './modules/kallisto_index'
-include { KALLISTO_BUS } from './modules/kallisto_bus'
-include { BUSTOOLS_SORT } from './modules/bustools_sort'
-include { BUSTOOLS_COUNT } from './modules/bustools_count'
-include { KALLISTO_QUANT_TCC } from './modules/kallisto_quant_tcc'
-include { BUSPARSE } from './modules/busparse'
+include { KALLISTO_QUANT } from './modules/kallisto_quant'
 
 workflow{
     // format .bam files
@@ -71,15 +67,13 @@ workflow{
     //isoquant transcriptome GTF to FASTA
     //GFFREAD(ISOQUANT.out.combined_gtf, params.genome)
     GFFREAD(params.isoquant_gtf, params.genome)
-    
-    //generate t2g file
-    BUSPARSE(GFFREAD.out)
 
     //generate fastq for kallisto
     SAMTOOLS_FASTQ(PBMM2_ALIGN.out.aligned)
     
     KALLISTO_INDEX(GFFREAD.out)
-    KALLISTO_BUS(SAMTOOLS_FASTQ.out.collect(), KALLISTO_INDEX.out)
+    KALLISTO_QUANT(SAMTOOLS_FASTQ.out.collect(), KALLISTO_INDEX.out)
+    //KALLISTO_BUS(SAMTOOLS_FASTQ.out.collect(), KALLISTO_INDEX.out)
     //BUSTOOLS_SORT(KALLISTO_BUS.out.bus)
     //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, BUSPARSE.out)
     //KALLISTO_QUANT_TCC(BUSTOOLS_COUNT.out.counts_mtx, KALLISTO_INDEX.out, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, BUSPARSE.out)

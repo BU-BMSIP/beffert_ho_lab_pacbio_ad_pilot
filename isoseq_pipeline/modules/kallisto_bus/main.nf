@@ -2,7 +2,7 @@
 
 process KALLISTO_BUS{
     conda "envs/kallisto_env.yml"
-    label "process_high"
+    label "process_very_high"
     publishDir "${params.outdir}/kallisto"
 
     input:
@@ -15,9 +15,8 @@ process KALLISTO_BUS{
     path("matrix.ec"), emit: matrix_ec
     path("flens.txt"), emit: flens_txt
 
-
     shell:
     """
-    kallisto bus -t $task.cpus --long --threshold 0.8 -x bulk -i $indexed_transcriptome -o . ${fastq.join(" ")}
+    kallisto bus -t $task.cpus --long --threshold 0.8 -x bulk -i $indexed_transcriptome -o kallisto ${fastq.join(" ")}
     """
 }
