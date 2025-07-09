@@ -27,82 +27,119 @@ counts
 ```
 ```{r}
 # abundance (transcripts per million)
-abundance <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped_tpm.tsv", sep = "\t")
-
-names(abundance) <- new_col_names
-abundance
+# abundance <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped_tpm.tsv", sep = "\t")
+# 
+# names(abundance) <- new_col_names
+# abundance
 ```
 
 ```{r}
 # generate design matrix
 
 sampleID <- colnames(counts[-1])
-condition <- gsub('.*_', '', colnames(counts[-1]))
+condition <- gsub('.*_', '', colnames(counts[-1])) %>% as.factor()
 design <- data.frame(
     sampleID = sampleID,
     condition = condition
 )
 
-design
+# add sex and age(?) and race(?) as covariates
+design$sex <- factor(c('male','male','male','female','female','female','male','female'))
 
-# add sex and age(?) as covariates
-#design$sex <- factor(c('a','a','b','a','b','b'))
-#design$age <- factor(c('a','a','b','a','b','b'))
+design
 ```
 
 ```{r}
-# create switchAnalyzeRlist
+# create switchAnalyzeRlist object
+# calculated RPKM/FPKM if abundance not supplied
 
 switch_analyzer_list <- importRdata(
     isoformCountMatrix   = counts,
-    isoformRepExpression = abundance,
     designMatrix         = design,
     isoformExonAnnoation = gtf_file,
     isoformNtFasta       = isoform_fasta,
     fixStringTieAnnotationProblem = TRUE,
-    showProgress = FALSE,
-    ignoreAfterBar = TRUE
+    showProgress = TRUE
 )
 summary(switch_analyzer_list)
 ```
+```{r}
+head(switch_analyzer_list$isoformFeatures,5)
+head(switch_analyzer_list$exons,5)
+head(switch_analyzer_list$ntSequence,5)
+```
+```{r}
+# filter:
+# Multi-isoform genes
+# Gene expression
+# Isoform expression
+# Isoform Fraction (isoform usage)
+# Unwanted isoform classes
+# Unwanted gene biotypes
+# Genes without differential isoform usage
+
+# default cutoffs:
+# alpha=0.05 --> FDR
+# dIFcutoff = 0.1 --> changes in absolute isoform usage / analogous to log2FC cut-off
+# geneExpressionCutoff --> Default is 1 FPKM/TPM/RPKM
+# isoformExpressionCutoff --> Default is 0 (which removes completely unused isoforms); also in RPKM/FPKM
+
+switch_analyzer_list_filtered <- preFilter(
+    switchAnalyzeRlist = switch_analyzer_list,
+    geneExpressionCutoff = 1,
+    isoformExpressionCutoff = 0,
+    removeSingleIsoformGenes = TRUE
+)
+```
 
 ```{r}
+# switch analysis with DEXseq
+# default cutoffs:
+# alpha=0.05 --> FDR
+# dIFcutoff = 0.1 --> changes in absolute isoform usage / analogous to log2FC cut-off
+# reduceToSwitchingGenes --> only uses genes w at least 1 sig differentially used isoform
 
-# filters for non-expressed genes/isoforms, identifies isoform switches, annotates open reading frames (ORF), 
-# switches with and extracts both the nucleotide and peptide (amino acid) sequences and output them as two separate fasta files 
+switch_analyzer_list_filtered <- isoformSwitchTestDEXSeq(
+    switchAnalyzeRlist = switch_analyzer_list_filtered,
+    reduceToSwitchingGenes=TRUE
+)
+extractSwitchSummary(switch_analyzer_list_filtered)
+```
 
-switch_list <- isoformSwitchAnalysisPart1(
-    switchAnalyzeRlist   = switch_analyzer_list,
+```{r}
+# analyze ORFs
+switch_analyzer_list_filtered <- addORFfromGTF(
+  switchAnalyzeRlist = switch_analyzer_list_filtered,
+  pathToGTF = gtf_file,
+  overwriteExistingORF=TRUE)
+
+switch_analyzer_list_filtered <- analyzeNovelIsoformORF(
+  switchAnalyzeRlist = switch_analyzer_list_filtered,
+  analysisAllIsoformsWithoutORF = TRUE
+) 
+```
+
+```{r}
+# get amino acid seq
+switch_analyzer_list_filtered <- extractSequence(
+    switch_analyzer_list_filtered, 
     pathToOutput = output_path,
-    outputSequences      = TRUE,
-    prepareForWebServers = FALSE 
+    writeToFile=TRUE
 )
-
-extractSwitchSummary( switch_list )
+```
+```{r}
+switch_analyzer_list_filtered$orfAnalysis
 ```
 
 ```{r}
-
-# importing and incorporating external sequence annotation, analysis of alternative splicing, 
-# predicting functional consequences and visualizing both the general effects of isoform switches 
-# and the individual isoform switches
-
-switch_list <- isoformSwitchAnalysisPart2(
-  switchAnalyzeRlist        = switch_analyzer_list, 
-  n                         = 10,
-  removeNoncodinORFs        = TRUE,
-  pathToCPC2resultFile      = file.path(output_path, "cpc2_result.txt"),
-  pathToPFAMresultFile      = file.path(output_path, "pfam_results.txt"),
-  pathToIUPred2AresultFile  = file.path(output_path, "iupred2a_result.txt.gz"),
-  pathToSignalPresultFile   = file.path(output_path, "signalP_results.txt"),
-  outputPlots               = FALSE
+# downstream an analyses
+switch_analyzer_list_filtered <- analyzeCPAT(
+  switch_analyzer_list_filtered,
+  file.path(output_path, "./")
 )
 ```
 
-```{r}
-# extract top switching genes with predicted functional consequences
-extractTopSwitches(switch_analyzer_list, filterForConsequences = TRUE, n=20)
-```
+----------------
 
 ### visualizations
 ```{r}
@@ -115,6 +152,7 @@ switchPlot(
     localTheme = theme_bw(base_size = 13) # making text sightly larger for vignette
 )
 ```
+
 ```{r}
 ### genome-wide global usage of isoform switches
 extractSwitchOverlap(
@@ -134,6 +172,7 @@ extractConsequenceSummary(
     asFractionTotal = FALSE      # enables analysis of fraction of significant features
 )
 ```
+
 ```{r}
 # analysis of the predicted consequences of isoform switches
 extractConsequenceEnrichment(
@@ -144,6 +183,7 @@ extractConsequenceEnrichment(
     returnResult = FALSE # if TRUE returns a data.frame with the summary statistics
 )
 ```
+
 ```{r}
 extractConsequenceEnrichmentComparison(
     switch_analyzer_list,
@@ -160,6 +200,7 @@ extractSplicingEnrichment(
     returnResult = FALSE # if TRUE returns a data.frame with the summary statistics
 )
 ```
+
 ```{r}
 extractSplicingEnrichmentComparison(
     switch_analyzer_list,
@@ -167,6 +208,7 @@ extractSplicingEnrichmentComparison(
     returnResult = FALSE # if TRUE returns a data.frame with the results
 )
 ```
+
 ```{r}
 # volcano plot
 ggplot(data=switch_analyzer_list$isoformFeatures, aes(x=dIF, y=-log10(isoform_switch_q_value))) +
@@ -182,6 +224,7 @@ ggplot(data=switch_analyzer_list$isoformFeatures, aes(x=dIF, y=-log10(isoform_sw
     labs(x='dIF', y='-Log10 ( Isoform Switch Q Value )') +
     theme_bw()
 ```
+
 ```{r}
 # Switch vs Gene changes
 ggplot(data=switch_analyzer_list$isoformFeatures, aes(x=gene_log2_fold_change, y=dIF)) +
@@ -197,6 +240,7 @@ ggplot(data=switch_analyzer_list$isoformFeatures, aes(x=gene_log2_fold_change, y
     labs(x='Gene log2 fold change', y='dIF') +
     theme_bw()
 ```
+
 ```{r}
 # global consequence analysis
 extractConsequenceSummary( switch_list )
