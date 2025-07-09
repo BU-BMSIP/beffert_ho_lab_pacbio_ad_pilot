@@ -11,8 +11,10 @@ include { ISOSEQ_COLLAPSE } from './modules/isoseq_collapse'
 include { SAMTOOLS_MERGE } from './modules/samtools_merge'
 include { SAMTOOLS_FASTQ } from './modules/samtools_fastq'
 include { GFFREAD } from './modules/gffread'
-include { KALLISTO_INDEX } from './modules/kallisto_index'
-include { KALLISTO_QUANT } from './modules/kallisto_quant'
+include { STRINGTIE } from './modules/stringtie'
+include { STRINGTIE_MERGE } from './modules/stringtie_merge'
+include { STRINGTIE_ABUNDANCE } from './modules/stringtie_abundance'
+include { GFFCOMPARE } from './modules/gffcompare'
 
 workflow{
     // format .bam files
@@ -62,29 +64,25 @@ workflow{
     // def bais = alignedList.map{ it[2] }.collect() 
     // ISOQUANT(names, bams, bais, params.gtf, params.genome)
 
-    // re-quantify to increase accuracy with kallisto (for isoformswitchanalyzer)
-
-    //isoquant transcriptome GTF to FASTA
+    // isoquant transcriptome GTF to FASTA
     //GFFREAD(ISOQUANT.out.combined_gtf, params.genome)
-    GFFREAD(params.isoquant_gtf, params.genome)
+    //GFFREAD(params.isoquant_gtf, params.genome)
 
-    //generate fastq for kallisto
+    // generate fastq
     SAMTOOLS_FASTQ(PBMM2_ALIGN.out.aligned)
-    
-    KALLISTO_INDEX(GFFREAD.out)
-    KALLISTO_QUANT(SAMTOOLS_FASTQ.out.collect(), KALLISTO_INDEX.out)
-    //KALLISTO_BUS(SAMTOOLS_FASTQ.out.collect(), KALLISTO_INDEX.out)
-    //BUSTOOLS_SORT(KALLISTO_BUS.out.bus)
-    //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, BUSPARSE.out)
-    //KALLISTO_QUANT_TCC(BUSTOOLS_COUNT.out.counts_mtx, KALLISTO_INDEX.out, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, BUSPARSE.out)
 
-    // isoformswitchanalyzer
-    //ISOFORMSWITCHANALYZER(KALLISTO_QUANT_TCC.out)
+    // stringtie 
+    STRINGTIE(PBMM2_ALIGN.out.aligned, params.gtf)
+    STRINGTIE_MERGE(STRINGTIE.out.stringtie_gtf.collect(), params.gtf)
+    STRINGTIE_ABUNDANCE(PBMM2_ALIGN.out.aligned, STRINGTIE_MERGE.out.merged_gtf)
 
-    // more analyses using kallisto counts
-    // deseq2, drimseq, dexseq, pbfusion
+    // gffcompare?
+    //GFFCOMPARE(params.gtf, ISOQUANT.out.combined_gtf, STRINGTIE_MERGE.out.merged_gtf)
 
-    // stringtie merge and gffcompare for novel isoform + gene counts?
+    // salmon
+
+    // more analyses
+    // isoformswitchanalyzer, deseq2, drimseq, dexseq, pbfusion
 
     // viz
     // swan or ggtranscript or itv
@@ -92,3 +90,4 @@ workflow{
 
 //Duration: 5h 11m 32s from start to PBMM2_ALIGN
 //Isoquant takes HOURS
+//StringTie steps take ~30mins
