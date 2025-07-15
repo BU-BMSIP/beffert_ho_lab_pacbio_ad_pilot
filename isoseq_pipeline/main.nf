@@ -15,6 +15,11 @@ include { STRINGTIE } from './modules/stringtie'
 include { STRINGTIE_MERGE } from './modules/stringtie_merge'
 include { STRINGTIE_ABUNDANCE } from './modules/stringtie_abundance'
 include { GFFCOMPARE } from './modules/gffcompare'
+include { KB_PYTHON } from './modules/kb_python'
+include { KALLISTO_BUS } from './modules/kallisto_bus'
+include { KALLISTO_QUANT_TCC } from './modules/kallisto_quant_tcc'
+include { BUSTOOLS_COUNT } from './modules/bustools_count'
+include { BUSTOOLS_SORT } from './modules/bustools_sort'
 
 workflow{
     // format .bam files
@@ -54,6 +59,7 @@ workflow{
     SAMTOOLS_MERGE(tech_rep_merge_ch) // sort first?
 
     // map to reference genome
+    // align and sort
     PBMM2_INDEX(params.genome)
     PBMM2_ALIGN(SAMTOOLS_MERGE.out, PBMM2_INDEX.out.indexed_genome)
 
@@ -76,10 +82,23 @@ workflow{
     STRINGTIE_MERGE(STRINGTIE.out.stringtie_gtf.collect(), params.gtf)
     STRINGTIE_ABUNDANCE(PBMM2_ALIGN.out.aligned, STRINGTIE_MERGE.out.merged_gtf)
 
-    // gffcompare?
-    //GFFCOMPARE(params.gtf, ISOQUANT.out.combined_gtf, STRINGTIE_MERGE.out.merged_gtf)
+    // gffcompare
+    // tama merge isoquant before gffcompare
+    //GFFCOMPARE(params.gtf, params.isoquant_gtf, STRINGTIE_MERGE.out.merged_gtf)
 
-    // salmon
+    // lr-kallisto
+    SAMTOOLS_FASTQ.out
+        | map{
+            fastq ->
+            def name = fastq.baseName
+            return tuple(name, fastq) }
+        | set{ fastq_ch }
+
+    KB_PYTHON()
+    KALLISTO_BUS(fastq_ch, KB_PYTHON.out.transcript_idx)
+    BUSTOOLS_SORT(KALLISTO_BUS.out.output_bus)
+    BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, KB_PYTHON.out.t2g)
+    KALLISTO_QUANT_TCC(KALLISTO_BUS.out.transcripts_txt, BUSTOOLS_COUNT.out.counts_mtx, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, params.gtf)
 
     // more analyses
     // isoformswitchanalyzer, deseq2, drimseq, dexseq, pbfusion

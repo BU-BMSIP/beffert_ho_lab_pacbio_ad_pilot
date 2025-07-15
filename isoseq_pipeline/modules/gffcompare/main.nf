@@ -6,16 +6,17 @@ process GFFCOMPARE {
     publishDir "${params.outdir}/gffcompare"
 
     input:
+    path(ref_gtf)
     path(isoquant_gtf)
     path(stringtie_gtf)
-    path(ref_gtf)
 
     output:
-    path("*")
+    path("isoquant.*"), emit: isoquant_gffcompare
+    path("stringtie.*"), emit: stringtie_gffcompare
 
     shell:
     """
-    gffcompare -r $ref_gtf -V $isoquant_gtf
-    gffcompare -r $ref_gtf -V $stringtie_gtf
+    gffcompare -r $ref_gtf -V -o isoquant $isoquant_gtf
+    gffcompare -r $ref_gtf -V -o stringtie $stringtie_gtf
     """
 }

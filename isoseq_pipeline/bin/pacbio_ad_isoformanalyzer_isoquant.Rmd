@@ -25,6 +25,7 @@ counts <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped
 names(counts) <- new_col_names
 counts
 ```
+
 ```{r}
 # abundance (transcripts per million)
 # abundance <- read.delim("../results/isoquant/isoquant.discovered_transcript_grouped_tpm.tsv", sep = "\t")
@@ -63,11 +64,13 @@ switch_analyzer_list <- importRdata(
 )
 summary(switch_analyzer_list)
 ```
+
 ```{r}
 head(switch_analyzer_list$isoformFeatures,5)
 head(switch_analyzer_list$exons,5)
 head(switch_analyzer_list$ntSequence,5)
 ```
+
 ```{r}
 # filter:
 # Multi-isoform genes
@@ -252,3 +255,4 @@ extractSplicingSummary( switch_list )
 extractSplicingEnrichment( switch_list )
 extractSplicingGenomeWide( switch_list )
 ```
+

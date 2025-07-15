@@ -12,9 +12,8 @@ process PBMM2_ALIGN {
     output:
     tuple val(name), path("${name}.aligned.bam"), path("${name}.aligned.bam.bai"), emit: aligned
 
-    // change to .sorted
     shell:
     """
-    pbmm2 align -j 11 -J 11 --preset ISOSEQ --sort $bam_merged $indexed_genome "${name}.aligned.bam" 
+    pbmm2 align -j 11 -J 11 --preset ISOSEQ --log-level INFO --sort $bam_merged $indexed_genome "${name}.aligned.bam" 
     """
 }
