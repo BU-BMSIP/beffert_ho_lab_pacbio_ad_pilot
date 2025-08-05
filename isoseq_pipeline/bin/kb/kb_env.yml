@@ -1,0 +1,9 @@
+name: kb_env
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - bustools
+  - kallisto
+prefix: /restricted/projectnb/ubah/rbozadjian/.conda/envs/kb_env

@@ -1,0 +1,184 @@
+---
+title: "PacBio AD Pilot: Differential Isoform Expression with Kallisto Counts"
+author: rachel bozadjian
+date:
+output: html_notebook
+---
+
+```{r, include=FALSE}
+library(AnnotationDbi)
+library(DESeq2)
+library(EnsDb.Hsapiens.v86)
+library(ggrepel)
+library(knitr)
+library(tidyverse)
+```
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+### Raw Counts
+
+```{r}
+# read in raw counts matrix
+counts <- read.csv("../kallisto_counts/kallisto_isoform_counts_all.csv")
+
+counts
+```
+
+### Filter Counts
+
+#### Keep transcripts with at least 2 samples that have \>= 10 counts
+
+```{r}
+# filter counts to keep transcripts with at least 2 samples with counts >= 10
+
+# all columns to integers
+counts[ , -1] <- lapply(counts[ , -1], as.integer)
+
+counts_filtered <- counts[rowSums(counts[-1] >= 10)>= 2, ]
+
+counts_filtered
+```
+
+```{r}
+# create deseq2 object
+
+# counts matrix
+counts_matrix <- as.matrix(counts_filtered[-1])
+row.names(counts_matrix) <- counts_filtered$isoform_id
+```
+
+### Covariate Data for DESeq2
+```{r}
+# col data
+col_data <- tibble(
+  sample_name = colnames(counts_filtered[-1])) %>%
+  separate(sample_name,c("sample","condition"),sep="_",remove=FALSE) %>%
+  mutate(condition=as.factor(condition))
+
+# add other covariates for pca
+col_data$sex <- factor(c('male','male','male','female','female','female','male','female'))
+col_data$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
+
+col_data
+```
+
+### Design Formula
+```{r}
+# design matrix and dds object
+design <- formula(~ condition)
+design
+```
+
+### Run DESeq2
+```{r, echo = FALSE}
+# run deseq2
+dds <- DESeqDataSetFromMatrix(
+  countData=counts_matrix,
+  colData=col_data,
+  design=design
+)
+dds <- DESeq(dds)
+res <- results(dds)
+```
+### Add Gene Names to Differential Expression Results
+```{r}
+# add gene names
+
+t2g_file <- readr::read_delim("../../refs/human.t2g", delim = "\t", col_names = c("transcript_id", "gene_id", "gene_symbol", "gene_version", "chr", "start", "end", "strand")) %>%
+  dplyr::select(transcript_id, gene_symbol)
+
+res_df <- res %>%
+  as.data.frame() %>%
+  arrange(padj) %>%
+  tibble::rownames_to_column("isoform_id") %>%
+  inner_join(t2g_file, by = join_by(isoform_id == transcript_id)) %>%
+  dplyr::select(isoform_id, gene_symbol, everything())
+
+res_df
+#write.csv(res_df, "kallisto_differential_isoform_expression.csv", row.names = FALSE)
+```
+### Volcano Plot of Differentially Expressed Isoforms [Labelled with Gene Name]
+#### Padj threshold = 0.05
+#### Log2FC threshold = +/- 1.5
+```{r, echo = FALSE}
+padj_threshold <- 0.05
+log2fc_threshold <- abs(log2(1.5))
+
+# Get genes to label (significant & above FC threshold)
+genes_to_label <- res_df %>%
+  dplyr::filter(padj <= padj_threshold & abs(log2FoldChange) >= log2fc_threshold) %>%
+  pull(isoform_id)
+
+# Create gene_label column
+res_df <- res_df %>%
+  mutate(gene_label = if_else(isoform_id %in% genes_to_label, gene_symbol, NA_character_))
+
+# Make volcano plot
+volcano_plot <- res_df %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(color = "grey") +
+  geom_point(data = subset(res_df, padj <= padj_threshold & log2FoldChange >= log2fc_threshold), color = "red") +
+  geom_point(data = subset(res_df, padj <= padj_threshold & log2FoldChange <= -log2fc_threshold), color = "blue") +
+  geom_text_repel(
+    data = subset(res_df, !is.na(gene_label)),
+    aes(label = gene_label),
+    max.overlaps = Inf,
+    box.padding = 0.7,
+    point.padding = 0.25
+  ) +
+  geom_hline(yintercept = -log10(padj_threshold), linetype = "longdash", colour = "grey") +
+  geom_vline(xintercept = log2fc_threshold, linetype = "longdash", colour = "red") +
+  geom_vline(xintercept = -log2fc_threshold, linetype = "longdash", colour = "blue") +
+  labs(
+    title = "Volcano Plot of Differentially Expressed Isoforms [Gene Symbols]",
+    x = "Log2 Fold Change",
+    y = "-Log10(padj)"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+volcano_plot
+
+res_df %>% filter(!is.na(gene_label))
+```
+### Individual Isoform Count Plots by Condition and Sex
+```{r}
+# plot sample counts for significant differentially expressed isoforms
+
+significant_isoforms <- res_df %>% 
+  dplyr::filter(padj < 0.05) %>% 
+  pull(isoform_id)
+
+run_plot_counts <- function(dds, iso_id) {
+  
+  gene_name <- res_df %>% 
+    dplyr::filter(res_df$isoform_id == iso_id) %>% 
+    pull(gene_symbol)
+  
+  plot_data <- plotCounts(dds, iso_id, intgroup = c("condition", "sex"), returnData = TRUE)
+
+  p <- plot_data %>%
+    ggplot(aes(x=condition, y=count, color = sex)) + 
+    geom_point(position=position_jitter(w=0.1,h=0)) + 
+    ggtitle(paste0(gene_name, " (", iso_id, ")")) +
+    theme_minimal()
+
+  print(p)
+}
+
+for (isoform in significant_isoforms) {
+  run_plot_counts(dds,isoform)
+}
+```
+### PCA on vst Normalized Counts
+```{r}
+# pca
+vsd <- vst(dds, blind=FALSE)
+
+plotPCA(vsd, intgroup=c("condition"))
+plotPCA(vsd, intgroup=c("race"))
+plotPCA(vsd, intgroup=c("sex"))
+```

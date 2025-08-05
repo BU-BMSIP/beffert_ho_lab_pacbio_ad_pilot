@@ -1,8 +1,0 @@
-name: talon_env
-channels:
-- conda-forge
-- bioconda 
-
-dependencies:
-- python=3.7
-- talon=6.0.1

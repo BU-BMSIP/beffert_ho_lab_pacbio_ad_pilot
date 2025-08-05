@@ -1,0 +1,49 @@
+```{r}
+# libraries
+library(IsoformSwitchAnalyzeR)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tximport)
+```
+
+```{r}
+stringtie_counts_path <- "../results/stringtie_abundance/"
+
+# stringtie_quant <- importIsoformExpression(
+#     parentDir = stringtie_counts_path,
+#     addIsofomIdAsColumn = TRUE
+# )
+
+# read_length = cov * transcript length / read length
+
+stringtie_counts <- tximport(files, type = "stringtie", countsFromAbundance = , )
+```
+
+```{r}
+
+```
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

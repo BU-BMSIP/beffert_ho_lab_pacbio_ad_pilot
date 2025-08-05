@@ -1,8 +1,9 @@
 #!/usr/bin/env nextflow
 
 process KB_PYTHON{
-    conda "envs/kb_python_env.yml"
-    label "process_high"
+    //conda "envs/kb_python_env.yml"
+    conda "/restricted/projectnb/ubah/rbozadjian/.conda/envs/kb_env"
+    label "process_medium"
     publishDir "${params.outdir}/kallisto"
 
     input:

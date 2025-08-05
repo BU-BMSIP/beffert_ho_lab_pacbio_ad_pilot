@@ -1,0 +1,7 @@
+name: bustools_env
+channels:
+- conda-forge
+- bioconda 
+
+dependencies:
+- bustools=0.45.1

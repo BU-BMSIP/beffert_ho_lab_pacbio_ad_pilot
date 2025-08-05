@@ -1,7 +1,0 @@
-name: kb_python_env
-channels:
-- conda-forge
-- bioconda 
-
-dependencies:
-- kb-python=0.29.5

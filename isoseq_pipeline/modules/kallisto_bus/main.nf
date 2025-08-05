@@ -1,7 +1,8 @@
 #!/usr/bin/env nextflow
 
 process KALLISTO_BUS{
-    conda "envs/kallisto_env.yml"
+    //conda "envs/kallisto_env.yml"
+    conda "/restricted/projectnb/ubah/rbozadjian/.conda/envs/kb_env"
     label "process_high"
     publishDir "${params.outdir}/kallisto"
 
@@ -18,6 +19,6 @@ process KALLISTO_BUS{
 
     shell:
     """
-    kallisto bus -t $task.cpus --long --threshold 0.8 -x bulk -i $transcript_idx -o ${name}/ $fastq
+    kallisto bus -t $task.cpus --verbose --long --threshold 0.8 -x bulk -i $transcript_idx -o ${name}/ $fastq
     """
 }

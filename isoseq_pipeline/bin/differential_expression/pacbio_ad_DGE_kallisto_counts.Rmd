@@ -1,0 +1,184 @@
+## differential gene expression with kallisto gene counts
+
+```{r}
+# libraries
+library(DESeq2)
+library(ggrepel)
+library(rtracklayer)
+library(tidyverse)
+library(tximport)
+```
+
+```{r}
+# make t2g file
+gtf_file <- readGFF("../../refs/gencode.v48.annotation.gtf")
+
+head(gtf_file)
+
+t2g <- gtf_file %>% dplyr::select(transcript_id, gene_id) %>% 
+  na.omit() %>% 
+  arrange(gene_id) %>% 
+  distinct() %>% 
+  as.data.frame()
+
+t2g
+```
+
+```{r}
+# tximport kallisto transcript counts
+kallisto_count_dir <- "../kallisto_counts"
+sub_dirs <- list.dirs(kallisto_count_dir, recursive=TRUE)[-1]
+
+files <- file.path(sub_dirs, "abundance.tsv")
+names(files) <- stringr::str_sub(basename(sub_dirs),-4)
+
+txi_object <- tximport(files, type = "kallisto", tx2gene = t2g, geneIdCol = gene_id, txIdCol = transcript_id)
+
+gene_counts <- txi_object$counts %>% as.data.frame() %>%
+  tibble::rownames_to_column("gene_id")
+
+gene_counts
+```
+
+
+```{r}
+# combine all kallisto gene count files
+# kallisto_count_dir <- "./kallisto_counts"
+# sub_dirs <- list.dirs(kallisto_count_dir, recursive=TRUE)[-1]
+# gene_counts_combined <- NULL
+# 
+# for (i in seq_along(sub_dirs)) {
+#   # get gene counts tsv
+#   sample_name <- stringr::str_sub(basename(sub_dirs[i]), -4)
+#   filename <- dir(path = sub_dirs[i], pattern="*gene.tsv")
+#   file_path <- file.path(sub_dirs[i], filename)
+#   gene_counts <- read.delim(file_path)
+#   gene_counts <- gene_counts %>% rename(!!sample_name := est_counts)
+# 
+#   if (is.null(gene_counts_combined)) {
+#     gene_counts_combined <- gene_counts[, c("gene_id", "gene_name", sample_name)]
+#   } else {
+#     gene_counts <- gene_counts[, c("gene_id", sample_name)]
+#     gene_counts_combined <- gene_counts_combined %>% full_join(gene_counts, by = "gene_id")
+#   }
+# }
+# gene_counts_combined
+
+#write.csv(gene_counts_combined, "kallisto_gene_counts_all.csv", row.names = FALSE)
+```
+
+```{r}
+# read in raw counts matrix
+new_col_names <- c("gene_id", "bc01_CTRL", "bc02_CTRL", "bc03_CTRL", "bc04_CTRL", "bc09_AD", "bc10_AD", "bc11_AD", "bc12_AD")
+
+names(gene_counts) <- new_col_names
+
+nrow(gene_counts)
+gene_counts
+```
+
+```{r}
+# filter counts to keep genes with at least 2 samples with counts >= 10
+
+# all columns to integers
+gene_counts[, -c(1, 2)] <- lapply(gene_counts[, -c(1, 2)], as.integer)
+
+counts_filtered <- gene_counts[rowSums(gene_counts[, -c(1, 2)] >= 10)>= 2, ]
+
+nrow(counts_filtered)
+counts_filtered
+```
+
+```{r}
+# create deseq2 object
+
+# counts matrix
+counts_matrix <- as.matrix(counts_filtered[, -c(1, 2)])
+row.names(counts_matrix) <- counts_filtered$gene_id
+```
+
+```{r}
+# col data
+col_data <- tibble(
+  sample_name = colnames(counts_filtered[, -c(1, 2)])) %>%
+  separate(sample_name,c("sample","condition"),sep="_",remove=FALSE) %>%
+  mutate(condition=as.factor(condition))
+
+col_data$sex <- factor(c('male','male','male','female','female','female','male','female'))
+col_data$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
+
+col_data
+```
+
+```{r}
+# design matrix and dds object
+design <- formula(~ condition + sex + race)
+dds <- DESeqDataSetFromMatrix(
+  countData=counts_matrix,
+  colData=col_data,
+  design=design
+)
+```
+
+
+```{r}
+# run deseq2
+dds <- DESeq(dds)
+res <- results(dds)
+```
+
+```{r}
+# join gene names
+
+res_df <- res %>%
+  as.data.frame() %>%
+  tibble::rownames_to_column("gene_id") %>%
+  arrange(padj) %>%
+  inner_join(gtf_file %>% select(gene_id, gene_name) %>% distinct(), by = "gene_id")
+
+res_df
+
+#write.csv(res_df, "kallisto_DGE.csv", row.names = FALSE)
+```
+
+```{r}
+padj_threshold <- 0.05
+log2fc_threshold <- abs(log2(1.5))
+
+# Get genes to label (significant & above FC threshold)
+genes_to_label <- res_df %>%
+  filter(padj <= padj_threshold & abs(log2FoldChange) >= log2fc_threshold) %>%
+  pull(gene_name)
+
+# Create gene_label column
+res_df <- res_df %>%
+  mutate(gene_label = if_else(gene_name %in% genes_to_label, gene_name, NA_character_))
+
+# Make volcano plot
+volcano_plot <- res_df %>%
+  ggplot(aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(color = "grey") +
+  geom_point(data = subset(res_df, padj <= padj_threshold & log2FoldChange >= log2fc_threshold), color = "red") +
+  geom_point(data = subset(res_df, padj <= padj_threshold & log2FoldChange <= -log2fc_threshold), color = "blue") +
+  geom_text_repel(
+    data = subset(res_df, !is.na(gene_label)),
+    aes(label = gene_label),
+    max.overlaps = Inf,
+    box.padding = 0.7,
+    point.padding = 0.25
+  ) +
+  geom_hline(yintercept = -log10(padj_threshold), linetype = "longdash", colour = "grey") +
+  geom_vline(xintercept = log2fc_threshold, linetype = "longdash", colour = "red") +
+  geom_vline(xintercept = -log2fc_threshold, linetype = "longdash", colour = "blue") +
+  labs(
+    title = "Volcano Plot of Differentially Expressed Genes",
+    x = "Log2 Fold Change",
+    y = "-Log10(padj)"
+  ) +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+volcano_plot
+res_df
+```
+

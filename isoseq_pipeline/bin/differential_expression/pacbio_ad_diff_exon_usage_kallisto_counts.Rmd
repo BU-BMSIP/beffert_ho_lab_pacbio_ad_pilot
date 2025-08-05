@@ -1,0 +1,76 @@
+---
+title: "PacBio AD Pilot: Differential Exon Usage"
+author: Rachel Bozadjian
+date:
+---
+```{r}
+library(DEXSeq)
+library(GenomicAlignments)
+library(GenomicFeatures)
+library(Rsamtools)
+library(tidyverse)
+library(txdbmaker) 
+```
+
+```{r}
+# make annotations
+txdb = makeTxDbFromGFF("../../refs/gencode.v48.annotation.gtf")
+```
+
+```{r}
+flattenedAnnotation = exonicParts( txdb, linked.to.single.gene.only=TRUE )
+names(flattenedAnnotation) =
+    sprintf("%s:E%0.3d", flattenedAnnotation$gene_id, flattenedAnnotation$exonic_part)
+```
+
+
+```{r}
+# count reads
+bam_dir <- "../../results/aligned_reads"
+file_paths <- list.files(bam_dir, pattern = "aligned\\.bam$", full.names = TRUE)
+
+bamFiles = BamFileList( file_paths )
+bamFiles
+seqlevelsStyle(flattenedAnnotation) = "UCSC"
+se = summarizeOverlaps(
+    flattenedAnnotation, BamFileList(bamFiles), singleEnd=TRUE,
+    fragments=FALSE, ignore.strand=TRUE )
+```
+
+
+```{r}
+# dexseq dataset
+colData(se)$condition = factor(c("CTRL", "CTRL", "CTRL", "CTRL", "AD","AD","AD","AD"))
+colData(se)$sex <- factor(c('male','male','male','female','female','female','male','female'))
+colData(se)$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
+
+dxd = DEXSeqDataSetFromSE( se, design= ~ sample + exon + condition:exon )
+colData(dxd)
+```
+
+
+```{r}
+# normalization
+dxd = estimateSizeFactors( dxd )
+
+#estimate dispersions
+dxd = estimateDispersions( dxd )
+
+plotDispEsts( dxd )
+```
+
+
+```{r}
+# test for differential exon usage
+dxd = testForDEU( dxd )
+dxd = estimateExonFoldChanges( dxd, fitExpToVar="condition")
+```
+
+```{r}
+# results
+dxr1 = DEXSeqResults( dxd )
+dxr1
+
+plotMA( dxr1, cex=0.8 )
+```
+

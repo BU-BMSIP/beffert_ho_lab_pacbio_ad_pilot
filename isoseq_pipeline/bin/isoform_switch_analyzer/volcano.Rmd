@@ -1,0 +1,30 @@
+```{r}
+library(ggplot2)
+library(ggrepel)
+
+# Read in the data
+sex_alone <- read.csv("./kallisto_isoform_switch_analysis.csv")
+
+# Plot
+ggplot(data = sex_alone, aes(x = dIF, y = -log10(isoform_switch_q_value))) +
+  geom_point(
+    aes(color = abs(dIF) > 0.1 & isoform_switch_q_value < 0.05),
+    size = 1
+  ) +
+  geom_hline(yintercept = -log10(0.05), linetype = 'dashed') +
+  geom_vline(xintercept = c(-0.1, 0.1), linetype = 'dashed') +
+  scale_color_manual('Significant\nIsoform Switch',
+                     values = c('FALSE' = 'blue', 'TRUE' = 'orange')) +
+  labs(x = 'dIF', y = '-Log10 (Isoform Switch Q Value)') +
+  ggtitle("isoform switch - sex only model") +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(abs(dIF) > 0.1 & isoform_switch_q_value < 0.05,
+                       paste0(gene_id, " (", isoform_id, ")"),
+                       '')),
+    size = 2.5
+  ) +
+  theme_bw()
+
+
+```
+

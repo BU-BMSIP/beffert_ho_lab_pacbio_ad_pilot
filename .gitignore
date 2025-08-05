@@ -1,12 +1,30 @@
-results/
-refs/
-samples/
+# Nextflow artifacts
 .nextflow*
 .nextflow/
 work/
-.conda/
-remultiplexed_hifi_reads/
 
+# Conda environments
+.conda/
+
+# Data folders (do not track raw/intermediate results)
+results/
+refs/
+samples/
+remultiplexed_hifi_reads/
+lr_kallisto/
+kallisto_counts/
+
+# Git LFS-blocked large output files — make sure you removed them from commits too
+lr_kallisto/*/output.bus
+
+# Specific files to ignore
+isoseq_pipeline/bin/differential_expression/t2g.csv
+isoseq_pipeline/bin/isoform_switch_analyzer/switch_analyzer_list_filtered.rds
+isoseq_pipeline/bin/isoform_switch_analyzer/switch_analyzer_list_filtered_race_sex.rds
+
+# Tool output
+bin/isoform_switch_analyzer/results_kallisto_isoformanalyzer
+bin/biolib_results/
 
 
 # Byte-compiled / optimized / DLL files
