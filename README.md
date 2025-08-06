@@ -75,14 +75,14 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 ### Installation
 1. Clone the repo  
    ```bash
-   git clone https://github.com/your-username/isoseq-nextflow.git
-   cd isoseq-nextflow
+   git clone https://github.com/rboz1/beffert_ho_lab_pacbio_ad_pilot.git
+   cd isoseq_pipeline
    ```
    
 2. Set up Conda environment or container profile
    ```bash
-    conda env create -f environment.yml
-    conda activate isoseq_env
+    conda env create -f ./envs/nextflow_base.yml
+    conda activate nextflow_base
    ```
 
 3. Run the pipeline
