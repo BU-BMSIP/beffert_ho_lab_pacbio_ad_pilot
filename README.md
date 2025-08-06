@@ -80,10 +80,10 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
    ```
    
 2. Set up Conda environment or container profile
-  ```bash
+   ```bash
     conda env create -f environment.yml
     conda activate isoseq_env
-  ```
+   ```
 
 3. Run the pipeline
    ```bash
@@ -91,7 +91,8 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
     --input '/path/to/*.subreads.bam' \
     --genome '/path/to/genome.fa' \
     --annotation '/path/to/annotation.gtf' \
-    --primers '/path/to/primers.fasta' ```
+    --primers '/path/to/primers.fasta'
+   ```
 ---
 
 ## Results
