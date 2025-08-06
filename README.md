@@ -44,9 +44,11 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 
 - Demultiplexing and primer removal using `lima`
 - Full-length non-chimeric (FLNC) read classification
-- Clustering and polishing with `isoseq3 cluster`
+- Polishing with `isoseq refine`
 - Reference-based alignment using `pbmm2`
 - Quantification with `lr-kallisto`
+- Splicing Analysis with `IsoformSwitchAnalyzeR`
+- Differential Isoform and Gene Expression Analyses with `DESeq2`
 
 ### Built With
 
@@ -66,7 +68,7 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 - Nextflow ≥ 22.10
 - Conda
 - PacBio raw subreads (BAM format)
-- Primer sequences (FASTA)
+- Segmentation and cDNA primer sequences (FASTA)
 - GENCODE Reference genome (FASTA) and annotation (GTF/GFF3)
 
 
@@ -94,46 +96,9 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 
 ## Results
 
-### Isoform clustering and annotation
-
-The pipeline generates high-confidence isoform FASTA and GTF files annotated using SQANTI3 and filtered for structural and quality metrics.
-
-![SQANTI3 summary plot](https://github.com/user-attachments/assets/sqanti_summary.png)
-
----
-
-### Transcriptome QC
-
-Includes:
-
-- Counts of full-length (FL) and full-length non-chimeric (FLNC) reads  
-- Isoform classification into categories such as FSM, ISM, NIC, NNC  
-- Splice junction validation and novelty statistics
-
----
-
-### Genome-aligned BAM files
-
-Aligned and indexed BAM files are generated using `minimap2` for visualization in genome browsers like IGV.
-
----
-
-### MultiQC Summary
-
-Aggregated HTML reports summarize key metrics from CCS, Lima, IsoSeq3, and alignment steps.
-
-![MultiQC report screenshot](https://github.com/user-attachments/assets/multiqc_example.png)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
 
 ## Next Steps
 
-- Add support for hybrid assembly with short-read RNA-seq data
-- Expand isoform quantification integration (e.g., Salmon, StringTie2)
-- Extend TSS/TTS characterization and alternative polyadenylation (APA) analysis
-- Integrate with downstream tools like tappAS or IsoAnnotLite for functional insights
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
