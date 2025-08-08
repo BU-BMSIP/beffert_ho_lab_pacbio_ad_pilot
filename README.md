@@ -87,7 +87,9 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 
 3. Run the pipeline
    ```bash
-     nextflow run main.nf -profile conda,sge
+     nextflow run main.nf -profile conda,cluster
+   ** please update your cluster in the nextflow.config if it isn't sge **
+   ** this can also be run locally **
    ```
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
