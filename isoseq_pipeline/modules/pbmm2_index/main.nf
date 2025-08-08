@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 
+// index human reference genome
 process PBMM2_INDEX {
     conda "envs/pbmm2_env.yml"
     label "process_high"

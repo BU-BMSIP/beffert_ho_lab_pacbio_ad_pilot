@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 
+// align to human reference genome
 process PBMM2_ALIGN {
     conda "envs/pbmm2_env.yml"
     label "process_very_high"

@@ -4,7 +4,7 @@ process KALLISTO_BUS{
     //conda "envs/kallisto_env.yml"
     conda "/restricted/projectnb/ubah/rbozadjian/.conda/envs/kb_env"
     label "process_high"
-    publishDir "${params.outdir}/kallisto"
+    publishDir "${params.outdir}/lr-kallisto"
 
     input:
     tuple val(name), path(fastq)
@@ -16,7 +16,7 @@ process KALLISTO_BUS{
     path("${name}/matrix.ec"), emit: matrix_ec
     path("${name}/flens.txt"), emit: flens_txt
 
-
+    // need to use kallisto_optoff_k64 binary
     shell:
     """
     kallisto bus -t $task.cpus --verbose --long --threshold 0.8 -x bulk -i $transcript_idx -o ${name}/ $fastq

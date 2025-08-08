@@ -38,8 +38,7 @@ design <- data.frame(
 )
 
 # add sex and ageand race as covariates
-# age coding is every 10 years
-#design$sex <- factor(c('male','male','male','female','female','female','male','female'))
+design$sex <- factor(c('male','male','male','female','female','female','male','female'))
 #design$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
 
 design
@@ -144,7 +143,7 @@ switch_analyzer_list_df <- switch_analyzer_list_filtered$isoformFeatures %>%
   arrange(isoform_switch_q_value)
 
 switch_analyzer_list_df
-write.csv(switch_analyzer_list_df, "kallisto_isoform_switch_analysis.csv", row.names = FALSE)
+#write.csv(switch_analyzer_list_df, "kallisto_isoform_switch_analysis.csv", row.names = FALSE)
 ```
 
 ```{r}
@@ -155,14 +154,15 @@ diff_iso_expr <- read.csv("../differential_expression/kallisto_differential_isof
 
 diff_iso_expr
 
+
 switch_analyzer_list_df <- switch_analyzer_list_df %>%
   left_join(
-    diff_gene_expr %>% select(gene_name, padj), 
+    diff_gene_expr %>% dplyr::select(gene_name, padj), 
     by = join_by(gene_id == gene_name)) %>%
   mutate(gene_q_value = padj) %>%
   subset(select = -padj) %>%
   left_join(
-    diff_iso_expr %>% select(isoform_id, padj), 
+    diff_iso_expr %>% dplyr::select(isoform_id, padj), 
     by = "isoform_id") %>%
   mutate(iso_q_value = padj) %>%
   subset(select = -padj)
@@ -172,30 +172,32 @@ switch_analyzer_list_filtered$isoformFeatures$iso_q_value <- switch_analyzer_lis
 
 switch_analyzer_list_filtered
 
-#saveRDS(switch_analyzer_list_filtered, file = "switch_analyzer_list_filtered.rds")
+saveRDS(switch_analyzer_list_filtered, file = "switch_analyzer_list_filtered_sex.rds")
 ```
 
 ```{r}
 # significant isoform switches (iso_switch_q_value < 0.05)
-switch_analyzer_list_filtered <- readRDS("./switch_analyzer_list_filtered.rds")
+switch_analyzer_list_filtered <- readRDS("./switch_analyzer_list_filtered_sex.rds")
 switch_analyzer_list_df <- switch_analyzer_list_filtered$isoformFeatures %>% as.data.frame()
 
 significant_iso_switches <- switch_analyzer_list_df %>%
-  filter(isoform_switch_q_value < 0.05) %>%
+  dplyr::filter(isoform_switch_q_value < 0.05) %>%
   arrange(isoform_switch_q_value) %>%
-  select(isoform_id, gene_id, condition_1, condition_2,iso_biotype, IF1, IF2, dIF, isoform_switch_q_value, gene_switch_q_value, PTC)
+  dplyr::select(isoform_id, gene_id, condition_1, condition_2,iso_biotype, IF1, IF2, dIF, isoform_switch_q_value, gene_switch_q_value, PTC)
 
 significant_iso_switches
 ```
 
 ```{r}
 # SignalP - Prediction of Signal Peptides
+# https://services.healthtech.dtu.dk/services/SignalP-6.0/
 switch_analyzer_list_filtered <- analyzeSignalP(
     switchAnalyzeRlist       = switch_analyzer_list_filtered,
     pathToSignalPresultFile  = "./biolib_results/signalp/prediction_results.txt"
 )
 
 # analyzeDeepTMHMM : Prediction of protein topology — the proteins location compared to the cell membrane. Can be intracellular, transmembrane (TM) or extracellular.
+# https://dtu.biolib.com/results/0797323f-c818-4343-88d7-43009062fc59/?token=ka2OLAD9XhWPRFIO
 switch_analyzer_list_filtered <- analyzeDeepTMHMM(
     switchAnalyzeRlist   = switch_analyzer_list_filtered,
     pathToDeepTMHMMresultFile = "./biolib_results/deeptmhmm/TMRs.gff3",
@@ -204,13 +206,15 @@ switch_analyzer_list_filtered <- analyzeDeepTMHMM(
 
 # analyzeDeepLoc2 - prediction of sub-cellular localization(s) of protein
 # deeploc2.0
+# https://services.healthtech.dtu.dk/services/DeepLoc-2.0/
 switch_analyzer_list_filtered <- analyzeDeepLoc2(
     switchAnalyzeRlist = switch_analyzer_list_filtered,
-    pathToDeepLoc2resultFile = "./biolib_results/deeploc2/results_688CFAF7002A0FC1C6951370.csv",
+    pathToDeepLoc2resultFile = "./biolib_results/deeploc2/results_6894F7A60000BCEA626E8931.csv",
     quiet = FALSE
 )
 
 # pfam
+# see /bin/isoform_switch_analyzer/biolib_results/pfam_hmmscan/ directory for shell script
 switch_analyzer_list_filtered <- analyzePFAM(
     switchAnalyzeRlist   = switch_analyzer_list_filtered,
     pathToPFAMresultFile = "./biolib_results/pfam_hmmscan/Pfam_result.txt",
@@ -360,7 +364,7 @@ ggplot(data = switch_analyzer_list_df, aes(x = dIF, y = -log10(isoform_switch_q_
   scale_color_manual('Significant\nIsoform Switch',
                      values = c('FALSE' = 'blue', 'TRUE' = 'orange')) +
   labs(x = 'dIF', y = '-Log10 (Isoform Switch Q Value)') +
-  ggtitle("significant isoform switches") +
+  ggtitle("Significant Isoform Switches AD vs. CTRL (Q value < 0.05)") +
   ggrepel::geom_text_repel(
     aes(label = ifelse(abs(dIF) > 0.1 & isoform_switch_q_value < 0.05,
                        paste0(gene_id, " (", isoform_id, ")"),
@@ -370,7 +374,11 @@ ggplot(data = switch_analyzer_list_df, aes(x = dIF, y = -log10(isoform_switch_q_
   theme_bw()
 ```
 ```{r}
-switch_analyzer_list_filtered$switchConsequence %>% filter(gene_id == "BRD8")
-switch_analyzer_list_filtered$isoformFeatures %>% filter(gene_id == "BRD8")
+switch_analyzer_list_filtered$switchConsequence %>% dplyr::filter(gene_id == "BRD8")
+switch_analyzer_list_filtered$isoformFeatures %>% dplyr::filter(gene_id == "BRD8")
+```
+```{r}
+switch_analyzer_list_filtered$isoformFeatures %>% arrange(isoform_switch_q_value) %>% dplyr::filter(isoform_switch_q_value < 0.05) %>%
+  dplyr::select(isoform_id, gene_id, gene_biotype, IF1, IF2, dIF, isoform_switch_q_value)
 ```
 

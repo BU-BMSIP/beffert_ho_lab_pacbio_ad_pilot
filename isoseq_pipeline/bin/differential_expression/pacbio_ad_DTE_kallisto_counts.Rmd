@@ -182,3 +182,8 @@ plotPCA(vsd, intgroup=c("condition"))
 plotPCA(vsd, intgroup=c("race"))
 plotPCA(vsd, intgroup=c("sex"))
 ```
+```{r}
+plotCounts(dds, "ENST00000373064.9", intgroup = c("condition", "sex"), returnData = FALSE)
+
+# For example, SLC25A25-AS1 shows lower levels in normal male brains compared with normal female brains but was significantly upregulated in male AD brains specifically compared with normal male brains (Fig. 3B).
+```

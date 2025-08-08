@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 
+// .bam to .fastq files
 process SAMTOOLS_FASTQ {
     conda "envs/samtools_env.yml"
     label "process_high"

@@ -3,7 +3,7 @@
 process BUSTOOLS_SORT {
     conda "envs/bustools_env.yml"
     label "process_medium"
-    publishDir "${params.outdir}/kallisto"
+    publishDir "${params.outdir}/lr-kallisto"
     
     input:
     tuple val(name), path(bus)
@@ -13,6 +13,6 @@ process BUSTOOLS_SORT {
 
     shell:
     """
-    bustools sort -t $task.cpus $bus -o sorted.bus
+    bustools sort -t $task.cpus $bus -o ${name}/sorted.bus
     """
 }

@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 
+// desegment reads
 process SKERA {
     conda "envs/skera_env.yml"
     label "process_high"

@@ -3,7 +3,7 @@
 process BUSTOOLS_COUNT {
     conda "envs/bustools_env.yml"
     label "process_high"
-    publishDir "${params.outdir}/kallisto"
+    publishDir "${params.outdir}/lr-kallisto"
     
     input: 
     tuple val(name), path(sorted_bus)

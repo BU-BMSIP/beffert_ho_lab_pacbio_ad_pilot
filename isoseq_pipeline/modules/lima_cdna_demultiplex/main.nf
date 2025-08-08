@@ -1,5 +1,6 @@
 #!/usr/bin/env nextflow
 
+// demultiplex cDNA adapters
 process LIMA_CDNA_DEMULTIPLEX {
     conda "envs/lima_env.yml"
     label "process_high"

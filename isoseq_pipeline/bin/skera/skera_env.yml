@@ -1,7 +1,0 @@
-name: skera_env
-channels:
-- conda-forge
-- bioconda 
-
-dependencies:
-- pbskera=1.4.0
