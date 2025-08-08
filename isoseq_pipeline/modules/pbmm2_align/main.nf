@@ -15,6 +15,6 @@ process PBMM2_ALIGN {
 
     shell:
     """
-    pbmm2 align -j 11 -J 11 --preset ISOSEQ --log-level INFO --sort $bam_merged $indexed_genome "${name}.aligned.bam" 
+    pbmm2 align -j 11 -J 11 --preset ISOSEQ --sort $bam_merged $indexed_genome "${name}.aligned.bam" --log-level INFO > pbmm2.log 2>&1
     """
 }

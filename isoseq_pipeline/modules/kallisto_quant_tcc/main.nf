@@ -18,6 +18,6 @@ process KALLISTO_QUANT_TCC{
    // need to use kallisto_optoff_k64 binary
     shell:
     """
-    kallisto quant-tcc -t $task.cpus --long -P PacBio -f $flens $counts_mtx -i $transcript_idx -e $counts_ec --matrix-to-directories -G $gtf -o . 
+    kallisto quant-tcc -t $task.cpus --long -P PacBio -f $flens $counts_mtx -i $transcript_idx -e $counts_ec --matrix-to-directories -G $gtf -o . > lrkallisto_stdout.log 2>&1
     """
 }

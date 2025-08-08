@@ -8,11 +8,16 @@ include { PBMM2_INDEX } from './modules/pbmm2_index'
 include { PBMM2_ALIGN } from './modules/pbmm2_align'
 include { SAMTOOLS_MERGE } from './modules/samtools_merge'
 include { SAMTOOLS_FASTQ } from './modules/samtools_fastq'
+include { STRINGTIE } from './modules/stringtie'
+include { STRINGTIE_MERGE } from './modules/stringtie_merge'
+include { STRINGTIE_ABUNDANCE } from './modules/stringtie_abundance'
+include { GFFCOMPARE } from './modules/gffcompare'
 include { KB_PYTHON } from './modules/kb_python'
 include { KALLISTO_BUS } from './modules/kallisto_bus'
 include { BUSTOOLS_SORT } from './modules/bustools_sort'
 include { BUSTOOLS_COUNT } from './modules/bustools_count'
 include { KALLISTO_QUANT_TCC } from './modules/kallisto_quant_tcc'
+include { MULTIQC } from './modules/multiqc'
 
 workflow{
     // format .bam files
@@ -65,13 +70,25 @@ workflow{
             return tuple(name, fastq) }
         | set{ fastq_ch }
 
+    // stringtie for novel transcript discovery and transcriptome annotated gtf creation
+    STRINGTIE(PBMM2_ALIGN.out.aligned, params.gtf)
+    STRINGTIE_MERGE(STRINGTIE.out.stringtie_gtf.collect(), params.gtf)
+    STRINGTIE_ABUNDANCE(PBMM2_ALIGN.out.aligned, STRINGTIE_MERGE.out.merged_gtf)
+
+    // run gffcompare on stringtie gtf file
+    GFFCOMPARE(params.gtf, STRINGTIE_MERGE.out.merged_gtf)
+
     // lr-kallisto for isoform quantification
     // need to use kallisto_optoff_k64 binary
-    KB_PYTHON(params.genome, params.gtf, params.transcriptome)
-    KALLISTO_BUS(fastq_ch, KB_PYTHON.out.transcript_idx)
+    //KB_PYTHON(params.genome, params.gtf, params.transcriptome)
+    KALLISTO_BUS(fastq_ch, params.kallisto_idx)
     BUSTOOLS_SORT(KALLISTO_BUS.out.output_bus)
-    BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, KB_PYTHON.out.t2g)
+    BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, params.kallisto_t2g)
     KALLISTO_QUANT_TCC(KALLISTO_BUS.out.transcripts_txt, BUSTOOLS_COUNT.out.counts_mtx, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, params.gtf)
+
+
+    // generate multiqc report
+    //MULTIQC()
 
     // isoformswitchanalyzer
     // need module for generating fastas using R script
