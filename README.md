@@ -98,7 +98,7 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 ## Contact
 
 Rachel Bozadjian - rbozadjian@gmail.com  
-Project Link: [https://github.com/your-username/isoseq-nextflow](https://github.com/rboz1/beffert_ho_lab_pacbio_ad_pilot.git)
+Project Link: [(https://github.com/rboz1/beffert_ho_lab_pacbio_ad_pilot.git](https://github.com/rboz1/beffert_ho_lab_pacbio_ad_pilot.git)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
