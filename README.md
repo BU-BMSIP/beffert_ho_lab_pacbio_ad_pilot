@@ -55,6 +55,7 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 - [Nextflow](https://www.nextflow.io/)
 - [IsoSeq tools](https://isoseq.how)
 - [lr-kallisto](https://github.com/pachterlab/kallisto)
+- [stringtie](https://github.com/gpertea/stringtie)
 - [IsoformSwitchAnalyzeR](https://www.bioconductor.org/packages/release/bioc/html/IsoformSwitchAnalyzeR.html)
 - [DESeq2](https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html)
 - Python, R
