@@ -87,14 +87,8 @@ This pipeline provides a streamlined workflow for analyzing long-read PacBio Iso
 
 3. Run the pipeline
    ```bash
-     nextflow run main.nf -profile conda,sge \
-    --input '/path/to/*.subreads.bam' \
-    --genome '/path/to/genome.fa' \
-    --annotation '/path/to/annotation.gtf' \
-    --primers '/path/to/primers.fasta'
+     nextflow run main.nf -profile conda,sge
    ```
----
-
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ---
