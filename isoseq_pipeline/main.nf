@@ -80,21 +80,10 @@ workflow{
 
     // lr-kallisto for isoform quantification
     // need to use kallisto_optoff_k64 binary
-    //KB_PYTHON(params.genome, params.gtf, params.transcriptome)
+    KB_PYTHON(params.genome, params.gtf, params.transcriptome)
     KALLISTO_BUS(fastq_ch, params.kallisto_idx)
     BUSTOOLS_SORT(KALLISTO_BUS.out.output_bus)
     BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, params.kallisto_t2g)
     KALLISTO_QUANT_TCC(KALLISTO_BUS.out.transcripts_txt, BUSTOOLS_COUNT.out.counts_mtx, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, params.gtf)
 
-
-    // generate multiqc report
-    //MULTIQC()
-
-    // isoformswitchanalyzer
-    // need module for generating fastas using R script
-    
-    // differential isoform expression
-
-    // tximport for gene count matrix generation
-    // differential gene expression
 }
