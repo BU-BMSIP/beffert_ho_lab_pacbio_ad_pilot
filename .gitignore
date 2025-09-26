@@ -13,6 +13,7 @@ samples/
 remultiplexed_hifi_reads/
 lr_kallisto/
 kallisto_counts/
+cluster_test/
 
 # Git LFS-blocked large output files — make sure you removed them from commits too
 lr_kallisto/*/output.bus

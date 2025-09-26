@@ -13,6 +13,6 @@ process BUSTOOLS_SORT {
 
     shell:
     """
-    bustools sort -t $task.cpus $bus -o ${name}/sorted.bus
+    bustools sort -t $task.cpus $bus -o sorted.bus
     """
 }

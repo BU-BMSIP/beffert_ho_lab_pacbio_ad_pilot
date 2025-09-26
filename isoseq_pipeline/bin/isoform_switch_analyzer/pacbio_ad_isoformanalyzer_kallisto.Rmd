@@ -1,11 +1,48 @@
 ---
-title: isoform switch analysis PacBio AD
+title: "pacbio_ad_pilot_isoformswitchanalyzer_kallisto_counts"
+author: Rachel Bozadjian
+date: 8/6/25
+output: 
+  html_document:
+    code_folding: show
+    code_download: true
+    df_print: paged
+    theme: yeti
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_sections: true
 ---
-```{r}
+
+# Method
+
+Transcript-level quantification was performed with lr-kallisto (v0.51.1), kallisto_optoff_k64 binary, using the GENCODE v48 human genome, transcriptome, and annotated GTF as references. Isoform abundance estimates (TxPM) and counts were imported into R where Differential Isoform Usage and splicing analyses were performed with IsoformSwitchAnalyzeR (v2.4.0).
+
+The design matrix incorporated disease status (AD vs. CTRL) as the primary factor while adjusting for sex as a covariate. Filtering was performed with default parameters (alpha \< 0.05 and absolute isoform fraction difference (dIF) \> 0.1) to retain genes with expression ≥1 TPM and isoforms with non-zero expression.
+
+Differential Isoform Usage was also assessed with significance thresholds of alpha \< 0.05 and absolute dIF \> 0.1. 26 total significant isoform switches were further characterized by integrating gene-level and isoform-level differential expression results from DESeq2 (v1.44.0). Functional consequences were predicted through four external computational tools: SignalP 6.0 for signal peptides, DeepTMHMM for protein topology, DeepLoc2.0 for subcellular localization, and Pfam for protein domains. We further evaluated the 26 significant isoform switches (isoform switch q value \< 0.05) for switching consequences, localization shifts, and alternative splicing following the IsoformSwitchAnalyzeR vignette with default parameters.
+
+All analyses were conducted in R (v4.4.0) and tidyverse (v2.0.0) ecosystem packages. Plots were generated with IsoformSwitchAnalyzeR or ggplot2 (v3.5.2).
+
+------------------------------------------------------------------------
+
+```{r setup}
 # libraries
+library(ggrepel)
 library(IsoformSwitchAnalyzeR)
 library(tidyverse)
+
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE, fig.width=12, fig.height=8, fig.align = "center")
 ```
+
+```{r}
+# print session information
+sessionInfo()
+```
+
+# Import Kallisto Count Data
 
 ```{r}
 # import counts
@@ -22,10 +59,12 @@ names(kallisto_quant$abundance) <- new_col_names
 names(kallisto_quant$counts) <- new_col_names
 names(kallisto_quant$length) <- new_col_names
 
-kallisto_quant
+kallisto_quant$counts
 
 # write.csv(kallisto_quant$counts, "kallisto_counts_all.csv", row.names = FALSE)
 ```
+
+# Generate Design Matrix with Sex as Covariate
 
 ```{r}
 # generate design matrix
@@ -43,6 +82,10 @@ design$sex <- factor(c('male','male','male','female','female','female','male','f
 
 design
 ```
+
+# Create Switch Analyzer Object
+
+Used GENCODE v48 .gtf file and transcripts .fa file
 
 ```{r}
 # create switchAnalyzeRlist object
@@ -62,13 +105,15 @@ switch_analyzer_list <- importRdata(
 summary(switch_analyzer_list)
 ```
 
+# Filtering
 
-```{r}
-head(switch_analyzer_list$isoformFeatures,5)
-head(switch_analyzer_list$exons,5)
-head(switch_analyzer_list$ntSequence,5)
-```
+FDR \< 0.05
 
+dIFcutoff = 0.1
+
+geneExpressionCutoff =1 FPKM/TPM/RPKM
+
+isoformExpressionCutoff = 0 RPKM/FPKM (removes completely unused isoforms)
 
 ```{r}
 # filter:
@@ -94,6 +139,13 @@ switch_analyzer_list_filtered <- preFilter(
 )
 ```
 
+# Switch Analysis with DEXSeq
+
+FDR \< 0.05
+
+dIFcutoff = 0.1
+
+reduceToSwitchingGenes = TRUE (only uses genes w at least 1 significant differentially used isoform)
 
 ```{r}
 # switch analysis with DEXseq
@@ -109,24 +161,8 @@ switch_analyzer_list_filtered <- isoformSwitchTestDEXSeq(
 extractSwitchSummary(switch_analyzer_list_filtered)
 ```
 
-
 ```{r}
-# analyze ORFs
-# don't think I need this for known transcripts
-switch_analyzer_list_filtered <- addORFfromGTF(
-  switchAnalyzeRlist = switch_analyzer_list_filtered,
-  pathToGTF = gtf_file,
-  overwriteExistingORF=TRUE)
-
-switch_analyzer_list_filtered <- analyzeNovelIsoformORF(
-  switchAnalyzeRlist = switch_analyzer_list_filtered,
-  analysisAllIsoformsWithoutORF = TRUE
-)
-```
-
-
-```{r}
-# extract sequences to files
+# extract switch amino acid and nt sequences to files
 switch_analyzer_list_filtered <- extractSequence(
     switch_analyzer_list_filtered, 
     pathToOutput = "results_kallisto_isoformanalyzer",
@@ -134,9 +170,14 @@ switch_analyzer_list_filtered <- extractSequence(
 )
 ```
 
+## Significant Isoform Switches
+
+Arranged by isoform_switch_q_value
+
+PTC = pre-mature termination codon
 
 ```{r}
-# pre-mature termination codons (PTC)
+# PTC means --> pre-mature termination codons
 
 switch_analyzer_list_df <- switch_analyzer_list_filtered$isoformFeatures %>% 
   as.data.frame() %>% 
@@ -146,14 +187,15 @@ switch_analyzer_list_df
 #write.csv(switch_analyzer_list_df, "kallisto_isoform_switch_analysis.csv", row.names = FALSE)
 ```
 
+## Add Differential Gene and Isoform Expression
+
+Add padj values
+
 ```{r}
 # add differential gene and isoform expression to switchanalyzer object
 
 diff_gene_expr <- read.csv("../differential_expression/kallisto_DGE.csv")
 diff_iso_expr <- read.csv("../differential_expression/kallisto_differential_isoform_expression.csv")
-
-diff_iso_expr
-
 
 switch_analyzer_list_df <- switch_analyzer_list_df %>%
   left_join(
@@ -170,9 +212,8 @@ switch_analyzer_list_df <- switch_analyzer_list_df %>%
 switch_analyzer_list_filtered$isoformFeatures$gene_q_value <- switch_analyzer_list_df$gene_q_value
 switch_analyzer_list_filtered$isoformFeatures$iso_q_value <- switch_analyzer_list_df$iso_q_value
 
-switch_analyzer_list_filtered
-
-saveRDS(switch_analyzer_list_filtered, file = "switch_analyzer_list_filtered_sex.rds")
+# save switch_analyzer_list_filtered as .RDS file for future use
+#saveRDS(switch_analyzer_list_filtered, file = "switch_analyzer_list_filtered_sex.rds")
 ```
 
 ```{r}
@@ -184,9 +225,41 @@ significant_iso_switches <- switch_analyzer_list_df %>%
   dplyr::filter(isoform_switch_q_value < 0.05) %>%
   arrange(isoform_switch_q_value) %>%
   dplyr::select(isoform_id, gene_id, condition_1, condition_2,iso_biotype, IF1, IF2, dIF, isoform_switch_q_value, gene_switch_q_value, PTC)
-
-significant_iso_switches
 ```
+
+# Volcano-like Plot of Significant Isoform Switches
+
+reference is AD
+
+isoform_switch_q_value \< 0.05
+
+dIF \< -0.1 or \> 0.1
+
+```{r}
+# volcano-like plot of isoform switches AD vs CTRL
+ggplot(data = switch_analyzer_list_df, aes(x = dIF, y = -log10(isoform_switch_q_value))) +
+  geom_point(
+    aes(color = abs(dIF) > 0.1 & isoform_switch_q_value < 0.05),
+    size = 1
+  ) +
+  geom_hline(yintercept = -log10(0.05), linetype = 'dashed') +
+  geom_vline(xintercept = c(-0.1, 0.1), linetype = 'dashed') +
+  scale_color_manual('Significant\nIsoform Switch',
+                     values = c('FALSE' = 'blue', 'TRUE' = 'orange')) +
+  labs(x = 'dIF', y = '-Log10 (Isoform Switch Q Value)') +
+  ggtitle("Significant Isoform Switches AD vs. CTRL (Q value < 0.05)") +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(abs(dIF) > 0.1 & isoform_switch_q_value < 0.05,
+                       paste0(gene_id, " (", isoform_id, ")"),
+                       '')),
+    size = 2.5
+  ) +
+  theme_bw()
+```
+
+# External Analyses
+
+signal peptides, protein topology, subcellular locations, and protein domains
 
 ```{r}
 # SignalP - Prediction of Signal Peptides
@@ -222,13 +295,61 @@ switch_analyzer_list_filtered <- analyzePFAM(
 )
 ```
 
+## Signal Peptide Analysis
+
+```{r}
+switch_analyzer_list_filtered$signalPeptideAnalysis %>% dplyr::left_join(switch_analyzer_list_filtered$isoformFeatures %>% dplyr::select(isoform_id, gene_name), by = join_by(isoform_id)) %>% dplyr::select(isoform_id, gene_name, everything())
+```
+
+## Topology Analysis
+
+```{r}
+switch_analyzer_list_filtered$topologyAnalysis %>% dplyr::left_join(switch_analyzer_list_filtered$isoformFeatures %>% dplyr::select(isoform_id, gene_name), by = join_by(isoform_id)) %>% dplyr::select(isoform_id, gene_name, everything())
+```
+
+## Subcellular Location Analysis
+
+```{r}
+switch_analyzer_list_filtered$subCellLocationAnalysis %>% dplyr::left_join(switch_analyzer_list_filtered$isoformFeatures %>% dplyr::select(isoform_id, gene_name), by = join_by(isoform_id)) %>% dplyr::select(isoform_id, gene_name, everything())
+```
+
+## Protein Domain Analysis
+
+Sorted by E_value (significance)
+
+```{r}
+switch_analyzer_list_filtered$domainAnalysis %>% dplyr::left_join(switch_analyzer_list_filtered$isoformFeatures %>% dplyr::select(isoform_id, gene_name), by = join_by(isoform_id)) %>% dplyr::select(isoform_id, gene_name, everything()) %>% arrange(E_value)
+```
+
+# Isoform Switch Plots with External Analyses
+
+```{r}
+# isoform switch visualization
+
+top_switches <- extractTopSwitches( 
+    switch_analyzer_list_filtered, 
+    filterForConsequences = FALSE, 
+    n = NA,                  # n=NA: all features are returned
+    extractGenes = FALSE,    # when FALSE isoforms are returned
+    sortByQvals = TRUE,
+)
+
+plot_isoform_switch <- function(isoform_switch_list, gene) { switchPlot( isoform_switch_list, gene=gene, condition1 = 'AD', condition2 = 'CTRL', plotTopology = TRUE ) }
+
+for (gene in top_switches$gene_id) { plot_isoform_switch(switch_analyzer_list_filtered, gene) }
+```
+
+# Alternative Splicing Analysis
+
+Reference is AD
+
 ```{r}
 # alternative splicing analysis
 switch_analyzer_list_filtered <- analyzeAlternativeSplicing(
     switchAnalyzeRlist = switch_analyzer_list_filtered,
     quiet=TRUE
 )
-table( switch_analyzer_list_filtered$AlternativeSplicingAnalysis$ATTS )
+switch_analyzer_list_filtered$AlternativeSplicingAnalysis
 ```
 
 ```{r}
@@ -237,13 +358,14 @@ extractSplicingEnrichment( switch_analyzer_list_filtered )
 extractSplicingGenomeWide( switch_analyzer_list_filtered )
 ```
 
+# Isoform Switch Consequence Analysis
+
 ```{r}
 # switch consequences
 
 consequencesOfInterest <- c(
         'intron_retention',
         'intron_structure',
-        'ORF_seq_similarity',
         'ORF_genomic',
         'ORF_length',
         'NMD_status',
@@ -277,10 +399,12 @@ consequencesOfInterest <- c(
 switch_analyzer_list_filtered <- analyzeSwitchConsequences(
     switch_analyzer_list_filtered,
     consequencesToAnalyze = consequencesOfInterest, 
-    dIFcutoff = 0.1, # very high cutoff for fast runtimes - you should use the default (0.1)
+    dIFcutoff = 0.1,
     showProgress=TRUE
 )
 ```
+
+## Top 10 Switches by Isoform Switch Q Value
 
 ```{r}
 ### Extract top switching genes (by q-value)
@@ -291,7 +415,11 @@ top_switches_q_value <- extractTopSwitches(
 )
 
 top_switches_q_value
+```
 
+## Top 10 Switches by dIF Value
+
+```{r}
 ### Extract top switching genes (by dIF values)
 top_switches_dif_value <- extractTopSwitches(
     switch_analyzer_list_filtered, 
@@ -301,46 +429,22 @@ top_switches_dif_value <- extractTopSwitches(
 top_switches_dif_value
 ```
 
-```{r}
-top_switches <- extractTopSwitches( 
-    switch_analyzer_list_filtered, 
-    filterForConsequences = TRUE, 
-    n = NA,                  # n=NA: all features are returned
-    extractGenes = FALSE,    # when FALSE isoforms are returned
-    sortByQvals = TRUE,
-)
+## Switch Consequence Plot AD vs CTRL
 
-top_switches
-```
-
-```{r}
-# isoform switch visualization
-
-plot_isoform_switch <- function(isoform_switch_list, gene) {
-  switchPlot(
-    isoform_switch_list,
-    gene=gene,
-    condition1 = 'AD',
-    condition2 = 'CTRL',
-    plotTopology = TRUE
-)
-}
-
-for (gene in top_switches$gene_id) {
-  plot_isoform_switch(switch_analyzer_list_filtered, gene)
-}
-```
+Reference is AD
 
 ```{r}
 extractConsequenceEnrichment(
     switch_analyzer_list_filtered,
     consequencesToAnalyze="all",
     analysisOppositeConsequence = TRUE,
-    localTheme = theme_bw(base_size = 14), # Increase font size in vignette
+    localTheme = theme_bw(base_size = 14),
     returnResult = FALSE # if TRUE returns a data.frame with the summary statistics
 )
 
 ```
+
+## Plot of Subcellular Location Shifts
 
 ```{r}
 extractSubCellShifts(
@@ -351,34 +455,3 @@ extractSubCellShifts(
     localTheme = theme_bw()
 )
 ```
-```{r}
-library(ggrepel)
-
-ggplot(data = switch_analyzer_list_df, aes(x = dIF, y = -log10(isoform_switch_q_value))) +
-  geom_point(
-    aes(color = abs(dIF) > 0.1 & isoform_switch_q_value < 0.05),
-    size = 1
-  ) +
-  geom_hline(yintercept = -log10(0.05), linetype = 'dashed') +
-  geom_vline(xintercept = c(-0.1, 0.1), linetype = 'dashed') +
-  scale_color_manual('Significant\nIsoform Switch',
-                     values = c('FALSE' = 'blue', 'TRUE' = 'orange')) +
-  labs(x = 'dIF', y = '-Log10 (Isoform Switch Q Value)') +
-  ggtitle("Significant Isoform Switches AD vs. CTRL (Q value < 0.05)") +
-  ggrepel::geom_text_repel(
-    aes(label = ifelse(abs(dIF) > 0.1 & isoform_switch_q_value < 0.05,
-                       paste0(gene_id, " (", isoform_id, ")"),
-                       '')),
-    size = 2.5
-  ) +
-  theme_bw()
-```
-```{r}
-switch_analyzer_list_filtered$switchConsequence %>% dplyr::filter(gene_id == "BRD8")
-switch_analyzer_list_filtered$isoformFeatures %>% dplyr::filter(gene_id == "BRD8")
-```
-```{r}
-switch_analyzer_list_filtered$isoformFeatures %>% arrange(isoform_switch_q_value) %>% dplyr::filter(isoform_switch_q_value < 0.05) %>%
-  dplyr::select(isoform_id, gene_id, gene_biotype, IF1, IF2, dIF, isoform_switch_q_value)
-```
-

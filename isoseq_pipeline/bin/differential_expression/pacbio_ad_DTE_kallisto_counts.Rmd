@@ -1,24 +1,49 @@
 ---
-title: "PacBio AD Pilot: Differential Isoform Expression with Kallisto Counts"
-author: rachel bozadjian
-date:
-output: html_notebook
+title: "pacbio_ad_pilot_differential_isoform_expression_kallisto_counts"
+author: Rachel Bozadjian
+date: 8/6/25
+output: 
+  html_document:
+    code_folding: show
+    code_download: true
+    df_print: paged
+    theme: yeti
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_sections: true
 ---
 
-```{r, include=FALSE}
+# Method
+
+Raw isoform-level counts were obtained from lr-kallisto (v0.51.1) and imported into R as a counts matrix. To ensure robust statistical analysis, transcripts were filtered to retain only those with at least 10 counts in two or more samples.
+
+Differential isoform expression analysis was performed using the DESeq2 (v1.44.0) package. The design matrix incorporated disease status (AD vs. CTRL) as the primary factor while adjusting for sex as a covariate.
+
+Results were annotated by joining transcript IDs to gene symbols using a reference transcript-to-gene mapping file generated from GENCODE v48 human reference genome, transcriptome, and annotated GTF files. Significantly differentially expressed isoforms were filtered by adjusted p-value \< 0.05 and fold-change threshold (log2 fold-change ≥ \|log2(1.5)\|). Volcano plots highlighting significant isoforms were generated in ggplot2 (3.5.3).
+
+Significant isoforms were further explored by plotting normalized counts across conditions and stratified by sex to visualize expression differences. Finally, principal component analysis (PCA) on variance-stabilized transformed counts was performed to assess sample clustering by condition and covariates.
+
+## All analyses were conducted in R (v4.4.0) and tidyverse (v2.0.0) ecosystem packages.
+
+```{r}
 library(AnnotationDbi)
 library(DESeq2)
 library(EnsDb.Hsapiens.v86)
 library(ggrepel)
 library(knitr)
 library(tidyverse)
+
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE, fig.width=12, fig.height=8, fig.align = "center")
 ```
 
-```{r, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+```{r}
+sessionInfo()
 ```
 
-### Raw Counts
+# Raw Counts
 
 ```{r}
 # read in raw counts matrix
@@ -27,9 +52,9 @@ counts <- read.csv("../kallisto_counts/kallisto_isoform_counts_all.csv")
 counts
 ```
 
-### Filter Counts
+# Filter Counts
 
-#### Keep transcripts with at least 2 samples that have \>= 10 counts
+Keep transcripts with at least 2 samples that have ≥ 10 counts
 
 ```{r}
 # filter counts to keep transcripts with at least 2 samples with counts >= 10
@@ -42,6 +67,8 @@ counts_filtered <- counts[rowSums(counts[-1] >= 10)>= 2, ]
 counts_filtered
 ```
 
+# Run DESeq2
+
 ```{r}
 # create deseq2 object
 
@@ -50,7 +77,8 @@ counts_matrix <- as.matrix(counts_filtered[-1])
 row.names(counts_matrix) <- counts_filtered$isoform_id
 ```
 
-### Covariate Data for DESeq2
+## Covariate Data for DESeq2
+
 ```{r}
 # col data
 col_data <- tibble(
@@ -60,19 +88,19 @@ col_data <- tibble(
 
 # add other covariates for pca
 col_data$sex <- factor(c('male','male','male','female','female','female','male','female'))
-col_data$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
+#col_data$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
 
 col_data
 ```
 
-### Design Formula
+## Design Formula
+
 ```{r}
 # design matrix and dds object
-design <- formula(~ condition)
+design <- formula(~ condition + sex)
 design
 ```
 
-### Run DESeq2
 ```{r, echo = FALSE}
 # run deseq2
 dds <- DESeqDataSetFromMatrix(
@@ -83,7 +111,9 @@ dds <- DESeqDataSetFromMatrix(
 dds <- DESeq(dds)
 res <- results(dds)
 ```
-### Add Gene Names to Differential Expression Results
+
+# Add Gene Names to Differential Expression Results
+
 ```{r}
 # add gene names
 
@@ -98,11 +128,13 @@ res_df <- res %>%
   dplyr::select(isoform_id, gene_symbol, everything())
 
 res_df
-#write.csv(res_df, "kallisto_differential_isoform_expression.csv", row.names = FALSE)
+write.csv(res_df, "kallisto_differential_isoform_expression.csv", row.names = FALSE)
 ```
-### Volcano Plot of Differentially Expressed Isoforms [Labelled with Gene Name]
-#### Padj threshold = 0.05
-#### Log2FC threshold = +/- 1.5
+
+# Volcano Plot of Differentially Expressed Isoforms [Labelled with Gene Name]
+
+Padj threshold = 0.05 Log2FC threshold = +/- 1.5
+
 ```{r, echo = FALSE}
 padj_threshold <- 0.05
 log2fc_threshold <- abs(log2(1.5))
@@ -142,9 +174,11 @@ volcano_plot <- res_df %>%
 
 volcano_plot
 
-res_df %>% filter(!is.na(gene_label))
+res_df %>% dplyr::filter(!is.na(gene_label))
 ```
-### Individual Isoform Count Plots by Condition and Sex
+
+# Individual Isoform Count Plots by Condition and Sex
+
 ```{r}
 # plot sample counts for significant differentially expressed isoforms
 
@@ -173,17 +207,15 @@ for (isoform in significant_isoforms) {
   run_plot_counts(dds,isoform)
 }
 ```
-### PCA on vst Normalized Counts
+
+# PCA on VST-Normalized Counts
+
 ```{r}
 # pca
 vsd <- vst(dds, blind=FALSE)
 
 plotPCA(vsd, intgroup=c("condition"))
-plotPCA(vsd, intgroup=c("race"))
 plotPCA(vsd, intgroup=c("sex"))
-```
-```{r}
-plotCounts(dds, "ENST00000373064.9", intgroup = c("condition", "sex"), returnData = FALSE)
 
-# For example, SLC25A25-AS1 shows lower levels in normal male brains compared with normal female brains but was significantly upregulated in male AD brains specifically compared with normal male brains (Fig. 3B).
+plotPCA(vsd, intgroup=c("condition", "sex"))
 ```

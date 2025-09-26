@@ -1,4 +1,34 @@
-## differential gene expression with kallisto gene counts
+---
+title: "pacbio_ad_pilot_differential_gene_expression_kallisto_counts"
+author: Rachel Bozadjian
+date: 8/6/25
+output: 
+  html_document:
+    code_folding: show
+    code_download: true
+    df_print: paged
+    theme: yeti
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    number_sections: true
+---
+
+# Method
+
+Gene-level counts were generated from transcript-level isoform counts produced by lr-kallisto (v0.51.1) using the tximport package (v1.32.0) in R. A reference GTF annotation file (Gencode v48) was parsed to create a transcript-to-gene mapping, which enabled aggregation of transcript counts into gene counts.
+
+The gene count matrix was filtered to retain genes with at least 10 counts in at least two samples to ensure robust downstream statistical analysis.
+
+Differential gene expression analysis was conducted using DESeq2 (v1.44.0). Sample metadata included condition (Alzheimer’s disease vs control), and sex as a covariate in the design formula.
+
+Significant genes were defined by an adjusted p-value < 0.05 and a fold-change threshold of |log2 fold-change| ≥ |log2(1.5)|. Volcano plots highlighting significant genes were generated with ggplot2 (v3.5.2).
+
+All analyses were conducted in R (v4.4.0) and tidyverse (v2.0.0) ecosystem packages.
+
+------------------------------------------------------------------------
 
 ```{r}
 # libraries
@@ -7,6 +37,12 @@ library(ggrepel)
 library(rtracklayer)
 library(tidyverse)
 library(tximport)
+
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE, fig.width=12, fig.height=8, fig.align = "center")
+```
+
+```{r}
+sessionInfo()
 ```
 
 ```{r}
@@ -20,9 +56,11 @@ t2g <- gtf_file %>% dplyr::select(transcript_id, gene_id) %>%
   arrange(gene_id) %>% 
   distinct() %>% 
   as.data.frame()
-
-t2g
 ```
+
+# Generate Gene-Level Counts
+
+Using lr-kallisto Isoform Counts
 
 ```{r}
 # tximport kallisto transcript counts
@@ -40,33 +78,6 @@ gene_counts <- txi_object$counts %>% as.data.frame() %>%
 gene_counts
 ```
 
-
-```{r}
-# combine all kallisto gene count files
-# kallisto_count_dir <- "./kallisto_counts"
-# sub_dirs <- list.dirs(kallisto_count_dir, recursive=TRUE)[-1]
-# gene_counts_combined <- NULL
-# 
-# for (i in seq_along(sub_dirs)) {
-#   # get gene counts tsv
-#   sample_name <- stringr::str_sub(basename(sub_dirs[i]), -4)
-#   filename <- dir(path = sub_dirs[i], pattern="*gene.tsv")
-#   file_path <- file.path(sub_dirs[i], filename)
-#   gene_counts <- read.delim(file_path)
-#   gene_counts <- gene_counts %>% rename(!!sample_name := est_counts)
-# 
-#   if (is.null(gene_counts_combined)) {
-#     gene_counts_combined <- gene_counts[, c("gene_id", "gene_name", sample_name)]
-#   } else {
-#     gene_counts <- gene_counts[, c("gene_id", sample_name)]
-#     gene_counts_combined <- gene_counts_combined %>% full_join(gene_counts, by = "gene_id")
-#   }
-# }
-# gene_counts_combined
-
-#write.csv(gene_counts_combined, "kallisto_gene_counts_all.csv", row.names = FALSE)
-```
-
 ```{r}
 # read in raw counts matrix
 new_col_names <- c("gene_id", "bc01_CTRL", "bc02_CTRL", "bc03_CTRL", "bc04_CTRL", "bc09_AD", "bc10_AD", "bc11_AD", "bc12_AD")
@@ -74,52 +85,58 @@ new_col_names <- c("gene_id", "bc01_CTRL", "bc02_CTRL", "bc03_CTRL", "bc04_CTRL"
 names(gene_counts) <- new_col_names
 
 nrow(gene_counts)
-gene_counts
 ```
+
+# Filter Counts
 
 ```{r}
 # filter counts to keep genes with at least 2 samples with counts >= 10
 
 # all columns to integers
-gene_counts[, -c(1, 2)] <- lapply(gene_counts[, -c(1, 2)], as.integer)
+gene_counts[ , -1] <- lapply(gene_counts[ , -1], as.integer)
 
-counts_filtered <- gene_counts[rowSums(gene_counts[, -c(1, 2)] >= 10)>= 2, ]
+counts_filtered <- gene_counts[rowSums(gene_counts[-1] >= 10)>= 2, ]
 
 nrow(counts_filtered)
 counts_filtered
 ```
 
+# Run DESeq2
+
 ```{r}
 # create deseq2 object
 
 # counts matrix
-counts_matrix <- as.matrix(counts_filtered[, -c(1, 2)])
+counts_matrix <- as.matrix(counts_filtered[-1])
 row.names(counts_matrix) <- counts_filtered$gene_id
 ```
+
+## Covariate Data for DESeq2
 
 ```{r}
 # col data
 col_data <- tibble(
-  sample_name = colnames(counts_filtered[, -c(1, 2)])) %>%
+  sample_name = colnames(counts_filtered[-1])) %>%
   separate(sample_name,c("sample","condition"),sep="_",remove=FALSE) %>%
   mutate(condition=as.factor(condition))
 
 col_data$sex <- factor(c('male','male','male','female','female','female','male','female'))
-col_data$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
+#col_data$race <- factor(c('Black','Black', 'White', 'White', 'White','White','Black','Black'))
 
 col_data
 ```
 
+## Design Formula
+
 ```{r}
 # design matrix and dds object
-design <- formula(~ condition + sex + race)
+design <- formula(~ condition + sex)
 dds <- DESeqDataSetFromMatrix(
   countData=counts_matrix,
   colData=col_data,
   design=design
 )
 ```
-
 
 ```{r}
 # run deseq2
@@ -134,12 +151,12 @@ res_df <- res %>%
   as.data.frame() %>%
   tibble::rownames_to_column("gene_id") %>%
   arrange(padj) %>%
-  inner_join(gtf_file %>% select(gene_id, gene_name) %>% distinct(), by = "gene_id")
+  inner_join(gtf_file %>% dplyr::select(gene_id, gene_name) %>% distinct(), by = "gene_id")
 
-res_df
-
-#write.csv(res_df, "kallisto_DGE.csv", row.names = FALSE)
+write.csv(res_df, "kallisto_DGE.csv", row.names = FALSE)
 ```
+
+# Volcano Plot of Differentially Expressed Genes
 
 ```{r}
 padj_threshold <- 0.05
@@ -147,7 +164,7 @@ log2fc_threshold <- abs(log2(1.5))
 
 # Get genes to label (significant & above FC threshold)
 genes_to_label <- res_df %>%
-  filter(padj <= padj_threshold & abs(log2FoldChange) >= log2fc_threshold) %>%
+  dplyr::filter(padj <= padj_threshold & abs(log2FoldChange) >= log2fc_threshold) %>%
   pull(gene_name)
 
 # Create gene_label column
@@ -163,7 +180,7 @@ volcano_plot <- res_df %>%
   geom_text_repel(
     data = subset(res_df, !is.na(gene_label)),
     aes(label = gene_label),
-    max.overlaps = Inf,
+    max.overlaps = 25,
     box.padding = 0.7,
     point.padding = 0.25
   ) +
@@ -181,4 +198,3 @@ volcano_plot <- res_df %>%
 volcano_plot
 res_df
 ```
-
