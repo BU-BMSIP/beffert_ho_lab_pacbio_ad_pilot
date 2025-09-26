@@ -79,7 +79,6 @@ workflow{
 
     // lr-kallisto for isoform quantification
     // need to use kallisto_optoff_k64 binary
-<<<<<<< HEAD
     KB_PYTHON(params.genome, params.gtf, params.transcriptome)
     KALLISTO_BUS(fastq_ch, params.kallisto_idx)
     BUSTOOLS_SORT(KALLISTO_BUS.out.output_bus)
@@ -87,11 +86,3 @@ workflow{
     KALLISTO_QUANT_TCC(KALLISTO_BUS.out.transcripts_txt, BUSTOOLS_COUNT.out.counts_mtx, BUSTOOLS_COUNT.out.counts_ec, KALLISTO_BUS.out.flens_txt, params.gtf)
 
 }
-=======
-    //KB_PYTHON(params.genome, params.gtf, params.transcriptome)
-    KALLISTO_BUS(fastq_ch, params.kallisto_idx, params.kallisto_t2g, params.gtf)
-    //BUSTOOLS_SORT(KALLISTO_BUS.out.output_bus)
-    //BUSTOOLS_COUNT(BUSTOOLS_SORT.out, KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.matrix_ec, params.kallisto_t2g)
-    //KALLISTO_QUANT_TCC(KALLISTO_BUS.out.transcripts_txt, KALLISTO_BUS.out.counts_mtx, KALLISTO_BUS.out.counts_ec, KALLISTO_BUS.out.flens_txt, params.gtf)
-}
->>>>>>> 9f04f11 (update)
